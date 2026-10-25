@@ -1,0 +1,22 @@
+# Cargo build output
+/target/
+
+# Library crate: lockfile is for applications, not published libs
+Cargo.lock
+
+# Backup files created by rustfmt
+**/*.rs.bk
+
+# MSVC Windows debug info
+*.pdb
+
+# macOS
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
