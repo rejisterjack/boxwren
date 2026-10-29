@@ -1,0 +1,19 @@
+[package]
+name = "boxwren-ffi"
+description = "C ABI for embedding Boxwren. Go binds this; it does not reimplement the sandbox."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+name = "boxwren_ffi"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+boxwren = { path = "../boxwren" }
+serde.workspace = true
+serde_json.workspace = true

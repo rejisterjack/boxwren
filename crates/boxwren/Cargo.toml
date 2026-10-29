@@ -1,0 +1,23 @@
+[package]
+name = "boxwren"
+description = "Local-first WebAssembly sandbox for untrusted agent code. Deny-by-default limits, capability grants, and a kill switch."
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+keywords = ["wasm", "sandbox", "wasi", "agents", "security"]
+categories = ["wasm", "api-bindings"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
