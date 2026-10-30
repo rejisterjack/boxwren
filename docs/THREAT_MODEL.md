@@ -20,7 +20,7 @@ When limits and the kill switch are left on, and grants stay narrow:
 
 - The guest cannot read or write host memory except through WASI imports.
 - The guest cannot open a directory that was not preopened. cap-std rejects `..` that would leave a preopen. The attempt is in the report.
-- The guest cannot connect, listen, or send except to an address a `NetGrant` allows. The check runs before the socket system call. DNS is off, so a name cannot be resolved to a new address.
+- The guest cannot connect, listen, or send except to an address a `NetGrant` allows. The check runs before the socket system call. DNS / name lookup is off unless the embedder granted a hostname; then only names that match a grant are useful, and connect still has to hit an allowed IP.
 - The guest cannot read the host environment. Only named grants are passed in.
 - Fuel, the memory limiter, and the epoch deadline stop a tight loop, a huge `memory.grow`, and a run that exceeds its wall clock. `KillHandle::kill` stops one run without stopping other runs on the same engine.
 - Stdio capture drops bytes past the cap instead of letting the guest fill host memory by printing.
@@ -40,8 +40,13 @@ When limits and the kill switch are left on, and grants stay narrow:
 - Preview 1 guests that use `std::fs` may fail inside libc before `path_open` when no preopen matches an absolute path. The host then has no path to record. Guests that must show the attempt in the report call `path_open` themselves. The embedded secret demo does this.
 - Preview 1 has no `sock_connect`. Network attempts are journaled for preview 2 components, through the socket address check.
 - An implicit bind to an unspecified address and port 0 is allowed so that a later connect can be checked. It is not recorded as egress. Binding a concrete address is checked and journaled.
-- If name lookup is turned on in a future version, DNS rebinding becomes a residual risk. It is off.
+- Hostname grants re-resolve at connect time. DNS rebinding (a name pointing at a different IP between lookup and connect, or between two connects) remains a residual risk. Prefer literal IP grants when the destination is fixed.
 
 ## Non-goals
 
-Hosted execution, accounts, a web report UI, container orchestration, an embedded Python or JavaScript runtime, Keywarden policy inside the sandbox, and any claim of perfect isolation.
+Container orchestration and any claim of perfect isolation remain non-goals.
+Hosted execution (`boxwren-server`) and a web dashboard are available as an
+optional deployment; they do not turn Boxwren into a VM. Guest Python/JS run via
+WASI interpreter modules under the same limits — not host-embedded CPython/V8.
+Keywarden policy is admission-only (`Preflight`), never rewritten inside WASI
+imports.

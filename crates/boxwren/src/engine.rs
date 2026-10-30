@@ -16,6 +16,7 @@ use crate::error::Error;
 /// A background thread ticks the engine epoch about once a millisecond.
 /// Each run sets a one-tick deadline and decides, on that tick, whether to
 /// keep going, time out, or die because its [`KillHandle`] was fired.
+#[derive(Clone)]
 pub struct Engine {
     inner: Arc<EngineInner>,
 }

@@ -1,7 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["crates/boxwren", "crates/boxwren-cli", "crates/boxwren-py", "crates/boxwren-ffi"]
-exclude = ["tests/guests", "tests/guests-p2"]
+members = [
+    "crates/boxwren",
+    "crates/boxwren-cli",
+    "crates/boxwren-py",
+    "crates/boxwren-ffi",
+    "crates/boxwren-server",
+]
+exclude = ["tests/guests", "tests/guests-p2", "guests/interpreters"]
 
 [workspace.package]
 version = "0.1.0"

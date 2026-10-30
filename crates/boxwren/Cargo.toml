@@ -11,6 +11,11 @@ authors.workspace = true
 keywords = ["wasm", "sandbox", "wasi", "agents", "security"]
 categories = ["wasm", "api-bindings"]
 
+[features]
+default = []
+# Bundle WASI MicroPython + QuickJS guests and helpers to run source scripts.
+interpreters = []
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

@@ -15,6 +15,20 @@ fn main() -> ExitCode {
                 ExitCode::from(2)
             }
         },
+        Command::RunPy(args) => match run_script(args, ScriptKind::Python) {
+            Ok(code) => code,
+            Err(err) => {
+                eprintln!("boxwren: {err}");
+                ExitCode::from(2)
+            }
+        },
+        Command::RunJs(args) => match run_script(args, ScriptKind::JavaScript) {
+            Ok(code) => code,
+            Err(err) => {
+                eprintln!("boxwren: {err}");
+                ExitCode::from(2)
+            }
+        },
         Command::Demo { report } => match demo(report) {
             Ok(code) => code,
             Err(err) => {
@@ -40,12 +54,42 @@ struct Cli {
 enum Command {
     /// Run one module and print an execution report.
     Run(RunArgs),
+    /// Run a Python source file inside the bundled MicroPython WASI guest.
+    RunPy(ScriptArgs),
+    /// Run a JavaScript source file inside the bundled QuickJS WASI guest.
+    RunJs(ScriptArgs),
     /// Run the blocked secret, network, and memory guests.
     Demo {
         /// `text` or `json`.
         #[arg(long, value_enum, default_value_t = ReportFormat::Text)]
         report: ReportFormat,
     },
+}
+
+#[derive(Parser)]
+struct ScriptArgs {
+    /// Path to a `.py` or `.js` source file.
+    script: PathBuf,
+    /// `text` or `json`.
+    #[arg(long, value_enum, default_value_t = ReportFormat::Text)]
+    report: ReportFormat,
+    #[arg(long)]
+    fuel: Option<u64>,
+    #[arg(long, value_name = "BYTES")]
+    memory: Option<String>,
+    #[arg(long, value_name = "DURATION")]
+    timeout: Option<String>,
+    #[arg(long = "allow-dir", value_name = "HOST:GUEST[:ro|rw]")]
+    allow_dir: Vec<String>,
+    #[arg(long = "allow-net", value_name = "HOST[:PORT]")]
+    allow_net: Vec<String>,
+    #[arg(long = "allow-env", value_name = "NAME[=VALUE]")]
+    allow_env: Vec<String>,
+}
+
+enum ScriptKind {
+    Python,
+    JavaScript,
 }
 
 #[derive(Parser)]
@@ -67,8 +111,8 @@ struct RunArgs {
     /// `host:guest`, `host:guest:ro`, or `host:guest:rw`. Default mode is read-only.
     #[arg(long = "allow-dir", value_name = "HOST:GUEST[:ro|rw]")]
     allow_dir: Vec<String>,
-    /// `ip` or `ip:port`. A bare address allows every port.
-    #[arg(long = "allow-net", value_name = "IP[:PORT]")]
+    /// `ip`, `ip:port`, `hostname`, or `hostname:port`. A bare target allows every port.
+    #[arg(long = "allow-net", value_name = "HOST[:PORT]")]
     allow_net: Vec<String>,
     /// `NAME` copies the host value. `NAME=VALUE` sets it explicitly.
     #[arg(long = "allow-env", value_name = "NAME[=VALUE]")]
@@ -82,6 +126,52 @@ struct RunArgs {
 enum ReportFormat {
     Text,
     Json,
+}
+
+fn run_script(args: ScriptArgs, kind: ScriptKind) -> Result<ExitCode, String> {
+    let limits = Limits {
+        fuel: args.fuel.unwrap_or(Limits::default().fuel),
+        memory_bytes: match &args.memory {
+            Some(memory) => parse_bytes(memory)?,
+            None => Limits::default().memory_bytes,
+        },
+        wall_time: match &args.timeout {
+            Some(timeout) => parse_duration(timeout)?,
+            None => Limits::default().wall_time,
+        },
+        ..Limits::default()
+    };
+    let mut grants = Grants::default();
+    for spec in &args.allow_dir {
+        grants
+            .dirs
+            .push(DirGrant::parse(spec).map_err(|err| err.to_string())?);
+    }
+    for spec in &args.allow_net {
+        grants
+            .net
+            .push(NetGrant::parse(spec).map_err(|err| err.to_string())?);
+    }
+    for spec in &args.allow_env {
+        grants
+            .env
+            .push(EnvGrant::parse(spec).map_err(|err| err.to_string())?);
+    }
+    let engine = boxwren::Engine::new().map_err(|err| err.to_string())?;
+    let kill = engine.kill_handle();
+    let interrupt = kill.clone();
+    ctrlc::set_handler(move || interrupt.kill()).map_err(|err| err.to_string())?;
+    let report = match kind {
+        ScriptKind::Python => {
+            boxwren::interpreters::execute_python_file(&engine, &args.script, limits, grants)
+        }
+        ScriptKind::JavaScript => {
+            boxwren::interpreters::execute_javascript_file(&engine, &args.script, limits, grants)
+        }
+    }
+    .map_err(|err| err.to_string())?;
+    print_report(&report, args.report);
+    Ok(exit_code(&report))
 }
 
 fn run(args: RunArgs) -> Result<ExitCode, String> {

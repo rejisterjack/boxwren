@@ -1,0 +1,33 @@
+[package]
+name = "boxwren-server"
+description = "Hosted HTTP API for the Boxwren WebAssembly sandbox."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+publish = false
+
+[[bin]]
+name = "boxwren-server"
+path = "src/main.rs"
+
+[dependencies]
+boxwren = { path = "../boxwren" }
+axum = { version = "0.8", features = ["json", "macros"] }
+base64 = "0.22"
+clap = { workspace = true, features = ["derive", "env"] }
+hex = "0.4"
+rand = "0.9"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "sync", "time", "signal"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
