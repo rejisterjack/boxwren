@@ -15,6 +15,9 @@ pub enum Error {
     #[error("kill handle was created by a different engine")]
     ForeignKillHandle,
 
+    #[error("policy denied the run: {0}")]
+    Policy(String),
+
     #[error(transparent)]
     Host(#[from] wasmtime::Error),
 }

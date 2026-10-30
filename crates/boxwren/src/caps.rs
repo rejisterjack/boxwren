@@ -1,4 +1,4 @@
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 
 use crate::error::Error;
@@ -19,19 +19,66 @@ pub struct DirGrant {
     pub writable: bool,
 }
 
+/// A network destination the guest may reach.
+///
+/// Literal IP grants never enable DNS. Hostname grants turn on WASI name
+/// lookup for the run and are re-resolved when a connect is checked.
 #[derive(Clone, Debug)]
 pub struct NetGrant {
-    pub addr: IpAddr,
+    pub target: NetTarget,
     pub port: Option<u16>,
 }
 
+#[derive(Clone, Debug)]
+pub enum NetTarget {
+    Ip(IpAddr),
+    Host(String),
+}
+
 impl NetGrant {
+    pub fn ip(addr: IpAddr, port: Option<u16>) -> Self {
+        Self {
+            target: NetTarget::Ip(addr),
+            port,
+        }
+    }
+
+    pub fn host(name: impl Into<String>, port: Option<u16>) -> Self {
+        Self {
+            target: NetTarget::Host(name.into()),
+            port,
+        }
+    }
+
+    pub fn is_hostname(&self) -> bool {
+        matches!(self.target, NetTarget::Host(_))
+    }
+
     pub(crate) fn allows(&self, addr: SocketAddr) -> bool {
-        if addr.ip() != self.addr {
+        if !self.port.is_none_or(|port| port == addr.port()) {
             return false;
         }
-        self.port.is_none_or(|port| port == addr.port())
+        match &self.target {
+            NetTarget::Ip(ip) => addr.ip() == *ip,
+            NetTarget::Host(name) => resolve_host(name)
+                .map(|ips| ips.iter().any(|ip| *ip == addr.ip()))
+                .unwrap_or(false),
+        }
     }
+
+    pub(crate) fn label_for(&self, addr: SocketAddr) -> String {
+        match &self.target {
+            NetTarget::Ip(_) => addr.to_string(),
+            NetTarget::Host(name) => format!("{name}/{addr}"),
+        }
+    }
+}
+
+fn resolve_host(name: &str) -> Result<Vec<IpAddr>, std::io::Error> {
+    // Port 0 is only used so ToSocketAddrs accepts a host string.
+    (name, 0u16)
+        .to_socket_addrs()
+        .map(|iter| iter.map(|addr| addr.ip()).collect())
 }
 
 #[derive(Clone, Debug)]
@@ -72,21 +119,47 @@ impl DirGrant {
 }
 
 impl NetGrant {
-    /// Parse `ip` or `ip:port`. Any port is allowed when the port is omitted.
+    /// Parse `ip`, `ip:port`, `hostname`, or `hostname:port`.
+    ///
+    /// A bare address allows every port. Hostnames enable DNS for the run.
     pub fn parse(spec: &str) -> Result<Self, Error> {
         if let Ok(addr) = spec.parse::<IpAddr>() {
-            return Ok(Self { addr, port: None });
+            return Ok(Self::ip(addr, None));
         }
         if let Ok(sock) = spec.parse::<SocketAddr>() {
-            return Ok(Self {
-                addr: sock.ip(),
-                port: Some(sock.port()),
-            });
+            return Ok(Self::ip(sock.ip(), Some(sock.port())));
+        }
+        // hostname or hostname:port — reject empty labels and spaces.
+        if spec.is_empty() || spec.contains(' ') || spec.contains('/') {
+            return Err(Error::BadGrant(format!(
+                "network grant `{spec}` must be an IP, ip:port, hostname, or hostname:port"
+            )));
+        }
+        if let Some((host, port)) = spec.rsplit_once(':')
+            && !host.is_empty()
+            && !host.contains(':')
+            && let Ok(port) = port.parse::<u16>()
+        {
+            if looks_like_hostname(host) {
+                return Ok(Self::host(host, Some(port)));
+            }
+        }
+        if looks_like_hostname(spec) {
+            return Ok(Self::host(spec, None));
         }
         Err(Error::BadGrant(format!(
-            "network grant `{spec}` must be an IP address or ip:port"
+            "network grant `{spec}` must be an IP, ip:port, hostname, or hostname:port"
         )))
     }
+}
+
+fn looks_like_hostname(name: &str) -> bool {
+    if name.is_empty() || name.len() > 253 {
+        return false;
+    }
+    name.bytes().all(|b| {
+        b.is_ascii_alphanumeric() || b == b'-' || b == b'.' || b == b'_'
+    }) && name.contains(|c: char| c.is_ascii_alphabetic())
 }
 
 impl EnvGrant {
@@ -141,7 +214,20 @@ impl Grants {
                 warnings.push(warning);
             }
         }
+        for net in &self.net {
+            if let NetTarget::Host(name) = &net.target
+                && resolve_host(name).is_err()
+            {
+                warnings.push(format!(
+                    "hostname grant `{name}` did not resolve at validation time; connect-time lookup may still succeed"
+                ));
+            }
+        }
         Ok(warnings)
+    }
+
+    pub(crate) fn needs_name_lookup(&self) -> bool {
+        self.net.iter().any(NetGrant::is_hostname)
     }
 }
 
@@ -210,6 +296,10 @@ mod tests {
         let one_port = NetGrant::parse("127.0.0.1:9").unwrap();
         assert!(one_port.allows("127.0.0.1:9".parse().unwrap()));
         assert!(!one_port.allows("127.0.0.1:10".parse().unwrap()));
+
+        let host = NetGrant::parse("localhost:9").unwrap();
+        assert!(matches!(host.target, NetTarget::Host(_)));
+        assert_eq!(host.port, Some(9));
 
         let env = EnvGrant::parse("BOXWREN_TEST_VALUE=open").unwrap();
         assert_eq!(env.name, "BOXWREN_TEST_VALUE");

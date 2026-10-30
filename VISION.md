@@ -19,7 +19,7 @@ Agents increasingly write and execute code on developer machines and servers. On
 - Capability-based grants for only what a run needs
 - Kill switch for immediate termination
 - Execution report: attempted actions, blocks, resource usage
-- Library + CLI; bindings planned for Python and Go agent stacks
+- Library + CLI; Python (`boxwren-py`) and Go (C ABI) bindings for agent stacks
 
 ## Who it's for
 

@@ -54,11 +54,12 @@ Defaults: 1_000_000_000 fuel (an instruction count, not milliseconds), 32 MiB of
 ```bash
 boxwren run guest.wasm --report json
 boxwren run guest.wasm --allow-dir ./data:/data:ro --allow-net 127.0.0.1:9 --allow-env API_TOKEN
+boxwren run guest.wasm --allow-net example.com:443
 boxwren run guest.wasm --fuel 1000000 --memory 16MiB --timeout 500ms
 boxwren demo
 ```
 
-`--allow-dir` is `host:guest`, `host:guest:ro`, or `host:guest:rw`. The split is the last colon. The default mode is read-only. `--allow-net` is an IP address, or `ip:port`. `--allow-env NAME` copies a host variable, and `NAME=VALUE` sets one explicitly. A missing directory or an unknown variable fails before the guest starts.
+`--allow-dir` is `host:guest`, `host:guest:ro`, or `host:guest:rw`. The split is the last colon. The default mode is read-only. `--allow-net` is an IP, `ip:port`, hostname, or `hostname:port`. Hostname grants turn on WASI name lookup for that run. `--allow-env NAME` copies a host variable, and `NAME=VALUE` sets one explicitly. A missing directory or an unknown variable fails before the guest starts.
 
 Ctrl-C fires the kill handle. The process prints the report and exits 0 when the status is `success`, 1 when the guest was stopped or trapped, and 2 when the request itself was invalid.
 

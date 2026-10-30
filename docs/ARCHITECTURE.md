@@ -38,7 +38,9 @@ Nothing is inherited. `inherit_network` is never called. The host environment is
 
 Preview 1 core modules (`wasm32-wasip1`) are linked with `wasmtime_wasi::p1`. `path_open` and the other `path_*` imports are wrapped so the report records the guest path, then a tiny Wasm shim calls the real import. The shim re-exports the guest memory. Calling the real host function directly from the wrapper hides that memory, and preview 1 fails closed with "missing required memory export". Success is errno 0. `..` is left to cap-std, which refuses to leave the preopen; the attempt is still journaled.
 
-Preview 2 components (`wasm32-wasip2`) are linked with `wasmtime_wasi::p2` and invoked as `wasi:cli/run`. TCP and UDP are enabled only so the socket address check can see the destination. The check runs before the connect system call. An implicit bind of `0.0.0.0:0` or `[::]:0` is allowed and not journaled, because the guest stack does that before `TcpConnect`. Every other address is denied unless a `NetGrant` matches, and the attempt is journaled. Name lookup stays off. Enabling it later would leave DNS rebinding as a residual risk.
+Preview 2 components (`wasm32-wasip2`) are linked with `wasmtime_wasi::p2` and invoked as `wasi:cli/run`. TCP and UDP are enabled only so the socket address check can see the destination. The check runs before the connect system call. An implicit bind of `0.0.0.0:0` or `[::]:0` is allowed and not journaled, because the guest stack does that before `TcpConnect`. Every other address is denied unless a `NetGrant` matches, and the attempt is journaled.
+
+Name lookup (`allow_ip_name_lookup`) is off unless the run includes at least one hostname `NetGrant`. Hostname grants are re-resolved when a connect is checked. Literal IP grants never enable DNS. DNS rebinding between resolve and connect remains a residual risk; see the threat model.
 
 Environment grants are journaled when they are injected. A guest lookup of a variable that was not granted is not a host call; tests check that the secret string is absent from stdout.
 

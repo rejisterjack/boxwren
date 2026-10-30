@@ -274,16 +274,15 @@ fn configure(
     // TCP and UDP exist so the address check can see the destination.
     // The check denies every address that was not granted. This is not
     // `inherit_network`, which would allow every host address.
+    // Name lookup stays off unless a hostname grant is present.
     builder.allow_tcp(true);
     builder.allow_udp(true);
+    builder.allow_ip_name_lookup(request.grants.needs_name_lookup());
     let grants = request.grants.net.clone();
     builder.socket_addr_check(move |addr, reason| {
-        let allowed = address_allowed(&grants, addr, reason);
+        let (allowed, target) = address_decision(&grants, addr, reason);
         if journal_address(addr, reason) {
-            push_event(
-                &journal,
-                event(EventKind::Network, addr.to_string(), allowed),
-            );
+            push_event(&journal, event(EventKind::Network, target, allowed));
         }
         Box::pin(async move { allowed })
     });
@@ -311,11 +310,20 @@ fn record_env_grants(grants: &Grants, journal: &Arc<Mutex<Vec<Event>>>) {
     }
 }
 
-fn address_allowed(grants: &[NetGrant], addr: SocketAddr, reason: SocketAddrUse) -> bool {
+fn address_decision(
+    grants: &[NetGrant],
+    addr: SocketAddr,
+    reason: SocketAddrUse,
+) -> (bool, String) {
     if is_implicit_bind(addr, reason) {
-        return true;
+        return (true, addr.to_string());
     }
-    grants.iter().any(|grant| grant.allows(addr))
+    for grant in grants {
+        if grant.allows(addr) {
+            return (true, grant.label_for(addr));
+        }
+    }
+    (false, addr.to_string())
 }
 
 fn is_implicit_bind(addr: SocketAddr, reason: SocketAddrUse) -> bool {

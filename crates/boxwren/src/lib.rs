@@ -10,15 +10,20 @@ mod caps;
 mod capture;
 mod engine;
 mod error;
+pub mod hooks;
 mod limiter;
 mod limits;
 mod report;
 mod run;
 mod wasi;
 
-pub use caps::{DirGrant, EnvGrant, Grants, NetGrant};
+#[cfg(feature = "interpreters")]
+pub mod interpreters;
+
+pub use caps::{DirGrant, EnvGrant, Grants, NetGrant, NetTarget};
 pub use engine::{Engine, KillHandle};
 pub use error::Error;
+pub use hooks::{PolicyDeny, Preflight};
 pub use limits::Limits;
 pub use report::{Decision, Event, EventKind, Report, SCHEMA_VERSION, Status};
 pub use run::{Entry, RunRequest};

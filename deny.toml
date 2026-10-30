@@ -9,6 +9,12 @@ targets = [
 [advisories]
 yanked = "warn"
 unmaintained = "workspace"
+# Transitive via wasmtime-internal-cache → zstd. Wasmtime 50.0.1 still
+# pins zstd-safe 7.3.0. Boxwren does not expose a user-facing zstd write
+# decoder; ignore until Wasmtime bumps the dep.
+ignore = [
+    { id = "RUSTSEC-2026-0403", reason = "transitive via wasmtime cache; no upgrade path on wasmtime 50" },
+]
 
 [licenses]
 allow = [

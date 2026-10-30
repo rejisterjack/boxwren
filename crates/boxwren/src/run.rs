@@ -72,9 +72,21 @@ impl Engine {
     /// Run a module. [`KillHandle::kill`] from another thread stops this run
     /// and leaves other runs on this engine alone.
     pub fn execute_with(&self, request: RunRequest, kill: &KillHandle) -> Result<Report, Error> {
+        self.execute_with_preflight(request, kill, &AllowAll)
+    }
+
+    /// Like [`Self::execute_with`], but asks `preflight` before instantiation.
+    /// Keywarden (or any policy) can deny the run without starting the guest.
+    pub fn execute_with_preflight(
+        &self,
+        request: RunRequest,
+        kill: &KillHandle,
+        preflight: &dyn crate::hooks::Preflight,
+    ) -> Result<Report, Error> {
         if !self.same_engine(kill) {
             return Err(Error::ForeignKillHandle);
         }
+        preflight.allow(&request)?;
         let warnings = request.grants.validate()?;
         if request.wasm.len() > request.limits.max_module_bytes {
             return Ok(rejected(
@@ -101,6 +113,14 @@ impl Engine {
         }
 
         execute_raw(self, module, request, kill, warnings)
+    }
+}
+
+struct AllowAll;
+
+impl crate::hooks::Preflight for AllowAll {
+    fn allow(&self, _request: &RunRequest) -> Result<(), crate::hooks::PolicyDeny> {
+        Ok(())
     }
 }
 

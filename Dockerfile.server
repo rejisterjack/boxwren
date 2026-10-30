@@ -1,0 +1,15 @@
+# Hosted API image. Still SFI, not a VM — pair with an outer boundary in production.
+FROM rust:1.97-bookworm AS build
+WORKDIR /src
+COPY . .
+RUN cargo build -p boxwren-server --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY --from=build /src/target/release/boxwren-server /usr/local/bin/boxwren-server
+ENV BOXWREN_LISTEN=0.0.0.0:8787
+ENV BOXWREN_DB=/data/boxwren.sqlite
+VOLUME ["/data"]
+EXPOSE 8787
+CMD ["boxwren-server"]
