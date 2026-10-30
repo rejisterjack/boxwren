@@ -82,14 +82,17 @@ It does not stop a bug in Wasmtime or Boxwren, a Spectre-class side channel, a g
 
 A cold `boxwren` process is about 6 ms on the machine in [docs/BENCHMARKS.md](docs/BENCHMARKS.md). An agent loop that starts a process per snippet should call the library in-process instead.
 
-Python (`import boxwren_py`):
+Python (`pip install boxwren-py`, then `import boxwren_py`):
 
 ```python
 import boxwren_py
 
 engine = boxwren_py.Engine()
+kill = engine.kill_handle()
 report = engine.execute(open("guest.wasm", "rb").read(), entry="_start")
 ```
+
+From a checkout: `pip install maturin && maturin develop` in `crates/boxwren-py`, or:
 
 ```bash
 cargo build -p boxwren-py --release
@@ -97,7 +100,7 @@ cp target/release/libboxwren_py.dylib boxwren_py.so   # .so on Linux
 PYTHONPATH=. python3 -c 'import boxwren_py; print(boxwren_py.Engine())'
 ```
 
-Go uses the C ABI in `crates/boxwren-ffi`, not a second sandbox. `cargo build -p boxwren-ffi --release`, then `go test` in `bindings/go`. Grants use the same strings as the CLI.
+Go (`go get github.com/rejisterjack/boxwren/bindings/go`): the package wraps the C ABI in `crates/boxwren-ffi`, not a second sandbox. `cargo build -p boxwren-ffi --release`, then `go test` in `bindings/go`. Grants use the same strings as the CLI. `Engine.KillHandle()` and `ExecuteWith(wasm, request, kill)` stop one run from any goroutine.
 
 ## License
 

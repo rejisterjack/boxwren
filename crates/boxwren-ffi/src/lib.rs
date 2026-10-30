@@ -9,6 +9,9 @@ use serde::Deserialize;
 
 struct Engine(boxwren::Engine);
 
+/// Opaque per-run kill switch. Create one per run from an engine.
+struct KillHandle(boxwren::KillHandle);
+
 #[derive(Deserialize)]
 struct RequestJson {
     #[serde(default = "command_entry")]
@@ -50,6 +53,101 @@ pub unsafe extern "C" fn boxwren_engine_free(engine: *mut c_void) {
     }
 }
 
+/// Create a kill handle bound to this engine. NULL if `engine` is null.
+///
+/// Clone semantics: create one handle per run. Other runs on the same
+/// engine keep their own deadlines.
+///
+/// # Safety
+/// `engine` is a live engine pointer. Free the result with [`boxwren_kill_free`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn boxwren_kill_new(engine: *mut c_void) -> *mut c_void {
+    if engine.is_null() {
+        return std::ptr::null_mut();
+    }
+    let engine = unsafe { &*(engine as *const Engine) };
+    Box::into_raw(Box::new(KillHandle(engine.0.kill_handle()))) as *mut c_void
+}
+
+/// Stop the run this handle is passed to. Safe to call from another thread.
+///
+/// # Safety
+/// `handle` is null or a pointer returned by [`boxwren_kill_new`] and not yet freed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn boxwren_kill(handle: *mut c_void) {
+    if !handle.is_null() {
+        unsafe {
+            (*(handle as *mut KillHandle)).0.kill();
+        }
+    }
+}
+
+/// # Safety
+/// `handle` is null or a pointer returned by [`boxwren_kill_new`] and not yet freed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn boxwren_kill_free(handle: *mut c_void) {
+    if !handle.is_null() {
+        unsafe {
+            drop(Box::from_raw(handle as *mut KillHandle));
+        }
+    }
+}
+
+/// Run a module with an external kill handle. Returns a newly allocated JSON
+/// report, or NULL with a message in `err_out` when it is non-null.
+///
+/// Pass NULL for `kill` to run without an external kill switch. Free the
+/// report string with [`boxwren_string_free`].
+///
+/// # Safety
+/// `engine` is a live engine pointer. `wasm` points at `wasm_len` bytes.
+/// `request_json` is null or a NUL-terminated UTF-8 string. `kill` is null or
+/// a pointer returned by [`boxwren_kill_new`] for the same engine. `err_out`
+/// is null or a writable pointer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn boxwren_execute_with(
+    engine: *mut c_void,
+    wasm: *const u8,
+    wasm_len: usize,
+    request_json: *const c_char,
+    kill: *mut c_void,
+    err_out: *mut *mut c_char,
+) -> *mut c_char {
+    if engine.is_null() {
+        write_err(err_out, "null engine");
+        return std::ptr::null_mut();
+    }
+    if kill.is_null() {
+        return unsafe { boxwren_execute(engine, wasm, wasm_len, request_json, err_out) };
+    }
+    let engine_ptr = unsafe { &*(engine as *const Engine) };
+    let kill_ptr = unsafe { &*(kill as *const KillHandle) };
+    let bytes = unsafe { slice_from_raw(wasm, wasm_len) };
+    let request = match request_json_or_default(request_json) {
+        Ok(request) => request,
+        Err(message) => {
+            write_err(err_out, &message);
+            return std::ptr::null_mut();
+        }
+    };
+    let run = match request_from(bytes, request) {
+        Ok(run) => run,
+        Err(err) => {
+            write_err(err_out, &err);
+            return std::ptr::null_mut();
+        }
+    };
+    match engine_ptr.0.execute_with(run, &kill_ptr.0) {
+        Ok(report) => CString::new(report.to_json())
+            .unwrap_or_else(|_| CString::new("{}").unwrap())
+            .into_raw(),
+        Err(err) => {
+            write_err(err_out, &err.to_string());
+            std::ptr::null_mut()
+        }
+    }
+}
+
 /// Run a module. Returns a newly allocated JSON report, or NULL.
 ///
 /// On NULL, `err_out` receives a newly allocated message when it is non-null.
@@ -75,31 +173,10 @@ pub unsafe extern "C" fn boxwren_execute(
         return failed("null engine or module".into());
     }
     let engine = unsafe { &*(engine as *const Engine) };
-    let bytes = if wasm_len == 0 {
-        &[]
-    } else {
-        unsafe { std::slice::from_raw_parts(wasm, wasm_len) }
-    };
-    let request = if request_json.is_null() {
-        RequestJson {
-            entry: command_entry(),
-            args: Vec::new(),
-            fuel: None,
-            memory_bytes: None,
-            wall_ms: None,
-            dirs: Vec::new(),
-            net: Vec::new(),
-            env: Vec::new(),
-        }
-    } else {
-        let text = match unsafe { CStr::from_ptr(request_json) }.to_str() {
-            Ok(text) => text,
-            Err(_) => return failed("request json is not utf-8".into()),
-        };
-        match serde_json::from_str::<RequestJson>(text) {
-            Ok(request) => request,
-            Err(err) => return failed(err.to_string()),
-        }
+    let bytes = unsafe { slice_from_raw(wasm, wasm_len) };
+    let request = match request_json_or_default(request_json) {
+        Ok(request) => request,
+        Err(message) => return failed(message),
     };
     let run = match request_from(bytes, request) {
         Ok(run) => run,
@@ -111,6 +188,36 @@ pub unsafe extern "C" fn boxwren_execute(
             .into_raw(),
         Err(err) => failed(err.to_string()),
     }
+}
+
+/// # Safety
+/// `wasm` is null or points at `wasm_len` bytes.
+unsafe fn slice_from_raw(wasm: *const u8, wasm_len: usize) -> &'static [u8] {
+    if wasm_len == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(wasm, wasm_len) }
+    }
+}
+
+fn request_json_or_default(request_json: *const c_char) -> Result<RequestJson, String> {
+    if request_json.is_null() {
+        return Ok(RequestJson {
+            entry: command_entry(),
+            args: Vec::new(),
+            fuel: None,
+            memory_bytes: None,
+            wall_ms: None,
+            dirs: Vec::new(),
+            net: Vec::new(),
+            env: Vec::new(),
+        });
+    }
+    let text = match unsafe { CStr::from_ptr(request_json) }.to_str() {
+        Ok(text) => text,
+        Err(_) => return Err("request json is not utf-8".into()),
+    };
+    serde_json::from_str::<RequestJson>(text).map_err(|err| err.to_string())
 }
 
 /// # Safety
@@ -204,6 +311,44 @@ mod tests {
         assert!(text.contains("4"), "{text}");
         unsafe {
             boxwren_string_free(raw);
+            boxwren_engine_free(engine);
+        }
+    }
+
+    #[test]
+    fn c_abi_kill_stops_a_loop() {
+        let engine = boxwren_engine_new();
+        let kill = unsafe { boxwren_kill_new(engine) };
+        assert!(!kill.is_null());
+        let handle = kill as *mut KillHandle;
+        let inner = unsafe { (*handle).0.clone() };
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(30));
+            inner.kill();
+        });
+        let wat = br#"
+            (module
+              (func (export "run")
+                (loop br 0)))
+        "#;
+        let request = CString::new(r#"{"entry":"run","wall_ms":3000}"#).unwrap();
+        let mut err = std::ptr::null_mut();
+        let raw = unsafe {
+            boxwren_execute_with(
+                engine,
+                wat.as_ptr(),
+                wat.len(),
+                request.as_ptr(),
+                kill,
+                &mut err,
+            )
+        };
+        assert!(!raw.is_null(), "err {}", unsafe { c_string(err) });
+        let text = unsafe { c_string(raw) };
+        assert!(text.contains("killed"), "{text}");
+        unsafe {
+            boxwren_string_free(raw);
+            boxwren_kill_free(kill);
             boxwren_engine_free(engine);
         }
     }

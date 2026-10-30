@@ -11,6 +11,10 @@ package boxwren
 void *boxwren_engine_new(void);
 void boxwren_engine_free(void *engine);
 char *boxwren_execute(void *engine, const uint8_t *wasm, size_t wasm_len, const char *request_json, char **err_out);
+char *boxwren_execute_with(void *engine, const uint8_t *wasm, size_t wasm_len, const char *request_json, void *kill, char **err_out);
+void *boxwren_kill_new(void *engine);
+void boxwren_kill(void *kill);
+void boxwren_kill_free(void *kill);
 void boxwren_string_free(char *s);
 */
 import "C"
@@ -39,6 +43,12 @@ type Engine struct {
 	ptr unsafe.Pointer
 }
 
+// KillHandle stops one run. Other runs on the same engine keep running.
+// Create one per run, call Kill from any goroutine, then Close.
+type KillHandle struct {
+	ptr unsafe.Pointer
+}
+
 func New() (*Engine, error) {
 	ptr := C.boxwren_engine_new()
 	if ptr == nil {
@@ -54,8 +64,38 @@ func (e *Engine) Close() {
 	}
 }
 
+// KillHandle returns a fresh kill switch bound to this engine.
+func (e *Engine) KillHandle() *KillHandle {
+	ptr := C.boxwren_kill_new(e.ptr)
+	if ptr == nil {
+		return nil
+	}
+	return &KillHandle{ptr: unsafe.Pointer(ptr)}
+}
+
+// Kill stops the run this handle was passed to. Idempotent.
+func (k *KillHandle) Kill() {
+	if k != nil && k.ptr != nil {
+		C.boxwren_kill(k.ptr)
+	}
+}
+
+// Close frees the handle. Kill after Close is a no-op.
+func (k *KillHandle) Close() {
+	if k != nil && k.ptr != nil {
+		C.boxwren_kill_free(k.ptr)
+		k.ptr = nil
+	}
+}
+
 // Execute runs wasm and returns the schema-1 report JSON.
 func (e *Engine) Execute(wasm []byte, request Request) (json.RawMessage, error) {
+	return e.ExecuteWith(wasm, request, nil)
+}
+
+// ExecuteWith runs wasm with an external kill handle. Pass nil to run
+// without one.
+func (e *Engine) ExecuteWith(wasm []byte, request Request, kill *KillHandle) (json.RawMessage, error) {
 	body, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
@@ -66,8 +106,12 @@ func (e *Engine) Execute(wasm []byte, request Request) (json.RawMessage, error) 
 	if len(wasm) > 0 {
 		wasmPtr = (*C.uint8_t)(unsafe.Pointer(&wasm[0]))
 	}
+	var killPtr unsafe.Pointer
+	if kill != nil && kill.ptr != nil {
+		killPtr = kill.ptr
+	}
 	var errPtr *C.char
-	raw := C.boxwren_execute(e.ptr, wasmPtr, C.size_t(len(wasm)), req, &errPtr)
+	raw := C.boxwren_execute_with(e.ptr, wasmPtr, C.size_t(len(wasm)), req, killPtr, &errPtr)
 	if raw == nil {
 		message := "boxwren: run failed"
 		if errPtr != nil {

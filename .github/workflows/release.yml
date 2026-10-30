@@ -62,6 +62,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build CLI
         run: cargo build -p boxwren-cli --release --target ${{ matrix.target }}
+      - name: Build FFI library for Go
+        run: cargo build -p boxwren-ffi --release --target ${{ matrix.target }}
       - name: Stage binary
         shell: bash
         run: |
@@ -69,6 +71,13 @@ jobs:
           if [[ "${{ matrix.target }}" == *windows* ]]; then ext=".exe"; fi
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/boxwren${ext}" "dist/${{ matrix.artifact }}"
+          lib="target/${{ matrix.target }}/release/"
+          case "${{ matrix.target }}" in
+            *apple-darwin)    cp "${lib}libboxwren_ffi.dylib" "dist/libboxwren_ffi-${{ matrix.target }}.dylib" ;;
+            *windows*)        cp "${lib}boxwren_ffi.dll" "dist/libboxwren_ffi-${{ matrix.target }}.dll" ;;
+            *musl*)           cp "${lib}libboxwren_ffi.a" "dist/libboxwren_ffi-${{ matrix.target }}.a" ;;
+            *)                cp "${lib}libboxwren_ffi.so" "dist/libboxwren_ffi-${{ matrix.target }}.so" ;;
+          esac
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
