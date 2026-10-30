@@ -1,0 +1,30 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "boxwren-py"
+version = "0.1.0"
+description = "In-process Python bindings for the Boxwren WebAssembly sandbox."
+readme = "README.md"
+license = { text = "MIT OR Apache-2.0" }
+requires-python = ">=3.9"
+keywords = ["wasm", "sandbox", "wasi", "agents", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://boxwren.rejisterjack.com"
+Repository = "https://github.com/rejisterjack/boxwren"
+
+[tool.maturin]
+# The Rust module is boxwren_py (crate lib name), so `import boxwren_py`.
+module-name = "boxwren_py"

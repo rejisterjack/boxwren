@@ -1,0 +1,37 @@
+[package]
+name = "boxwren-guests"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "happy"
+path = "src/happy.rs"
+
+[[bin]]
+name = "secret"
+path = "src/secret.rs"
+
+[[bin]]
+name = "read"
+path = "src/read.rs"
+
+[[bin]]
+name = "escape"
+path = "src/escape.rs"
+
+[[bin]]
+name = "write_ro"
+path = "src/write_ro.rs"
+
+[[bin]]
+name = "env"
+path = "src/env.rs"
+
+[[bin]]
+name = "memory"
+path = "src/memory.rs"
+
+[[bin]]
+name = "spin"
+path = "src/spin.rs"

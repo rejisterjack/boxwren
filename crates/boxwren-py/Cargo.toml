@@ -1,0 +1,19 @@
+[package]
+name = "boxwren-py"
+description = "In-process Python bindings for the Boxwren WebAssembly sandbox."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+name = "boxwren_py"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+boxwren = { path = "../boxwren" }
+pyo3.workspace = true
+serde_json.workspace = true
