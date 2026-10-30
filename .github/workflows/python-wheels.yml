@@ -63,9 +63,9 @@ jobs:
           args: sdist --out dist
       - name: Upload sdist
         uses: actions/upload-artifact@v4
-          with:
-            name: sdist
-            path: crates/boxwren-py/dist/*.tar.gz
+        with:
+          name: sdist
+          path: crates/boxwren-py/dist/*.tar.gz
 
   publish:
     needs: [wheels, sdist]
