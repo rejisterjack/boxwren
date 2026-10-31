@@ -44,7 +44,8 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact: boxwren-aarch64-apple-darwin
-          - os: macos-13
+          # Build Intel mac on macos-latest (cross target). macos-13 runners often sit queued forever.
+          - os: macos-latest
             target: x86_64-apple-darwin
             artifact: boxwren-x86_64-apple-darwin
           - os: windows-latest
