@@ -124,4 +124,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Publish the library
-        run: cargo publish -p boxwren --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "CARGO_REGISTRY_TOKEN unset; skipping crates.io publish"
+            exit 0
+          fi
+          cargo publish -p boxwren --token "$CARGO_REGISTRY_TOKEN"
