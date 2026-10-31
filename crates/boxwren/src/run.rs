@@ -240,11 +240,12 @@ where
         if control.killed.load(Ordering::Acquire) {
             return Ok(UpdateDeadline::Interrupt);
         }
-        if let Some(started) = control.started {
-            if started.elapsed() >= control.wall {
-                control.timed_out = true;
-                return Ok(UpdateDeadline::Interrupt);
-            }
+        if control
+            .started
+            .is_some_and(|started| started.elapsed() >= control.wall)
+        {
+            control.timed_out = true;
+            return Ok(UpdateDeadline::Interrupt);
         }
         Ok(UpdateDeadline::Continue(1))
     });
