@@ -2,11 +2,7 @@
 
 use serde_json::json;
 
-pub async fn preflight_keywarden(
-    url: &str,
-    account_id: &str,
-    entry: &str,
-) -> Result<(), String> {
+pub async fn preflight_keywarden(url: &str, account_id: &str, entry: &str) -> Result<(), String> {
     let client = reqwest::Client::new();
     let response = client
         .post(url)

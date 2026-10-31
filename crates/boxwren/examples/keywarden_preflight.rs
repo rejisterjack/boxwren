@@ -1,8 +1,6 @@
 //! Show how a Keywarden-style policy can refuse a run before the guest starts.
 
-use boxwren::{
-    Entry, Error, Grants, Limits, PolicyDeny, Preflight, RunRequest,
-};
+use boxwren::{Entry, Error, Grants, Limits, PolicyDeny, Preflight, RunRequest};
 
 struct DenyExports;
 

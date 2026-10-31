@@ -18,7 +18,21 @@ rust-version = "1.97"
 authors = ["Boxwren contributors"]
 
 [workspace.dependencies]
-wasmtime = "50"
+# Drop `cache` (and its zstd) so cargo-deny stays clean; Boxwren does not use
+# Wasmtime's on-disk module cache.
+wasmtime = { version = "50", default-features = false, features = [
+    "cranelift",
+    "runtime",
+    "component-model",
+    "wat",
+    "std",
+    "parallel-compilation",
+    "pooling-allocator",
+    "threads",
+    # Needed so `wasm_exceptions` can load MicroPython WASI guests.
+    "gc",
+    "gc-null",
+] }
 wasmtime-wasi = "50"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

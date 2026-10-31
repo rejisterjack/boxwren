@@ -17,8 +17,7 @@ use crate::limits::Limits;
 use crate::report::Report;
 use crate::run::{Entry, HasControl, RunControl, RunRequest, arm, report_from};
 
-const MICROPYTHON: &[u8] =
-    include_bytes!("../../../guests/interpreters/micropython-wasi.wasm");
+const MICROPYTHON: &[u8] = include_bytes!("../../../guests/interpreters/micropython-wasi.wasm");
 const QUICKJS: &[u8] = include_bytes!("../../../guests/interpreters/qjs-wasi.wasm");
 
 /// MicroPython WASI module bytes (feature `interpreters`).
@@ -38,13 +37,7 @@ pub fn execute_python(
     limits: Limits,
     grants: Grants,
 ) -> Result<Report, Error> {
-    execute_micropython(
-        engine,
-        &engine.kill_handle(),
-        source,
-        limits,
-        grants,
-    )
+    execute_micropython(engine, &engine.kill_handle(), source, limits, grants)
 }
 
 /// Run a JavaScript source file via the bundled QuickJS WASI guest.
@@ -174,11 +167,9 @@ fn execute_micropython(
     wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |state: &mut MpState| &mut state.wasi)?;
     // Stubs for the simonw host-call user module. One-shot `-c` runs never
     // need them; signatures must still match the Wasm imports.
-    linker.func_wrap(
-        "micropython_wasm",
-        "host_result_cap",
-        || -> i32 { 256 * 1024 },
-    )?;
+    linker.func_wrap("micropython_wasm", "host_result_cap", || -> i32 {
+        256 * 1024
+    })?;
     linker.func_wrap(
         "micropython_wasm",
         "host_call",

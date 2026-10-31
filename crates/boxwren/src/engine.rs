@@ -56,6 +56,10 @@ impl Engine {
         config.consume_fuel(true);
         config.epoch_interruption(true);
         config.wasm_threads(false);
+        // MicroPython WASI guests need the exceptions proposal (and GC in the
+        // Wasmtime build). Leave it on for every engine so interpreter runs
+        // and ordinary modules share one Config.
+        config.wasm_exceptions(true);
         // Compilation of a hostile module is not epoch-interruptible.
         // The module size cap is the mitigation. Parallel compilation stays on
         // because it only affects compile latency of modules we already accepted.

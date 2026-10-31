@@ -26,7 +26,11 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
-        run: cargo test --workspace
+        # Skip CLI default interpreters feature so unit tests stay fast and
+        # do not compile MicroPython/QuickJS in parallel with timing tests.
+        run: cargo test --workspace --no-default-features
+      - name: Interpreters feature
+        run: cargo test -p boxwren --features interpreters --lib -- --test-threads=2
       - name: Short fuzz
         run: cargo test -p boxwren --test fuzz_smoke --release
 

@@ -139,10 +139,9 @@ impl NetGrant {
             && !host.is_empty()
             && !host.contains(':')
             && let Ok(port) = port.parse::<u16>()
+            && looks_like_hostname(host)
         {
-            if looks_like_hostname(host) {
-                return Ok(Self::host(host, Some(port)));
-            }
+            return Ok(Self::host(host, Some(port)));
         }
         if looks_like_hostname(spec) {
             return Ok(Self::host(spec, None));
@@ -157,9 +156,9 @@ fn looks_like_hostname(name: &str) -> bool {
     if name.is_empty() || name.len() > 253 {
         return false;
     }
-    name.bytes().all(|b| {
-        b.is_ascii_alphanumeric() || b == b'-' || b == b'.' || b == b'_'
-    }) && name.contains(|c: char| c.is_ascii_alphabetic())
+    name.bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'.' || b == b'_')
+        && name.contains(|c: char| c.is_ascii_alphabetic())
 }
 
 impl EnvGrant {

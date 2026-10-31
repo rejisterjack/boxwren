@@ -196,7 +196,7 @@ async fn create_run(
     if let Some(url) = &state.keywarden_url {
         preflight_keywarden(url, &account.id, &body.entry)
             .await
-            .map_err(|err| ApiError::forbidden(err))?;
+            .map_err(ApiError::forbidden)?;
     }
 
     let wasm = decode_wasm(&body)?;
@@ -340,9 +340,7 @@ fn decode_wasm(body: &CreateRun) -> Result<Vec<u8>, ApiError> {
     if let Some(text) = &body.wasm_text {
         return Ok(text.as_bytes().to_vec());
     }
-    Err(ApiError::bad(
-        "provide wasm_base64 or wasm_text".into(),
-    ))
+    Err(ApiError::bad("provide wasm_base64 or wasm_text".into()))
 }
 
 fn status_kind(status: &Status) -> &'static str {

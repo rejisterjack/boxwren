@@ -13,12 +13,16 @@ publish = false
 name = "boxwren"
 path = "src/main.rs"
 
+[features]
+default = ["interpreters"]
+interpreters = ["boxwren/interpreters"]
+
 [dependencies]
-boxwren = { path = "../boxwren", features = ["interpreters"] }
+boxwren = { path = "../boxwren" }
 clap.workspace = true
 ctrlc.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
-boxwren = { path = "../boxwren", features = ["interpreters"] }
+boxwren = { path = "../boxwren" }
 serde_json.workspace = true

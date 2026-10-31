@@ -172,7 +172,14 @@ impl Db {
         conn.execute(
             "INSERT INTO runs (id, account_id, status, duration_ms, fuel_used, report_json)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![id, account_id, status, duration_ms as i64, fuel_used as i64, report_json],
+            params![
+                id,
+                account_id,
+                status,
+                duration_ms as i64,
+                fuel_used as i64,
+                report_json
+            ],
         )
         .map_err(|err| err.to_string())?;
         Ok(())

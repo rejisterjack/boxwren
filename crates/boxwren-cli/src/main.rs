@@ -15,6 +15,7 @@ fn main() -> ExitCode {
                 ExitCode::from(2)
             }
         },
+        #[cfg(feature = "interpreters")]
         Command::RunPy(args) => match run_script(args, ScriptKind::Python) {
             Ok(code) => code,
             Err(err) => {
@@ -22,6 +23,7 @@ fn main() -> ExitCode {
                 ExitCode::from(2)
             }
         },
+        #[cfg(feature = "interpreters")]
         Command::RunJs(args) => match run_script(args, ScriptKind::JavaScript) {
             Ok(code) => code,
             Err(err) => {
@@ -55,8 +57,10 @@ enum Command {
     /// Run one module and print an execution report.
     Run(RunArgs),
     /// Run a Python source file inside the bundled MicroPython WASI guest.
+    #[cfg(feature = "interpreters")]
     RunPy(ScriptArgs),
     /// Run a JavaScript source file inside the bundled QuickJS WASI guest.
+    #[cfg(feature = "interpreters")]
     RunJs(ScriptArgs),
     /// Run the blocked secret, network, and memory guests.
     Demo {
@@ -66,6 +70,7 @@ enum Command {
     },
 }
 
+#[cfg(feature = "interpreters")]
 #[derive(Parser)]
 struct ScriptArgs {
     /// Path to a `.py` or `.js` source file.
@@ -87,6 +92,7 @@ struct ScriptArgs {
     allow_env: Vec<String>,
 }
 
+#[cfg(feature = "interpreters")]
 enum ScriptKind {
     Python,
     JavaScript,
@@ -128,6 +134,7 @@ enum ReportFormat {
     Json,
 }
 
+#[cfg(feature = "interpreters")]
 fn run_script(args: ScriptArgs, kind: ScriptKind) -> Result<ExitCode, String> {
     let limits = Limits {
         fuel: args.fuel.unwrap_or(Limits::default().fuel),
