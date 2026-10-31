@@ -72,16 +72,23 @@ jobs:
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/boxwren${ext}" "dist/${{ matrix.artifact }}"
           lib="target/${{ matrix.target }}/release/"
+          # cdylib output: .dylib / .dll / .so (including musl). Also keep .rlib/.a if present.
           case "${{ matrix.target }}" in
-            *apple-darwin)    cp "${lib}libboxwren_ffi.dylib" "dist/libboxwren_ffi-${{ matrix.target }}.dylib" ;;
-            *windows*)        cp "${lib}boxwren_ffi.dll" "dist/libboxwren_ffi-${{ matrix.target }}.dll" ;;
-            *musl*)           cp "${lib}libboxwren_ffi.a" "dist/libboxwren_ffi-${{ matrix.target }}.a" ;;
-            *)                cp "${lib}libboxwren_ffi.so" "dist/libboxwren_ffi-${{ matrix.target }}.so" ;;
+            *apple-darwin)
+              cp "${lib}libboxwren_ffi.dylib" "dist/libboxwren_ffi-${{ matrix.target }}.dylib"
+              ;;
+            *windows*)
+              cp "${lib}boxwren_ffi.dll" "dist/libboxwren_ffi-${{ matrix.target }}.dll"
+              ;;
+            *)
+              cp "${lib}libboxwren_ffi.so" "dist/libboxwren_ffi-${{ matrix.target }}.so"
+              ;;
           esac
+          ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}
+          path: dist/
 
   github_release:
     needs: [demo, binaries]
