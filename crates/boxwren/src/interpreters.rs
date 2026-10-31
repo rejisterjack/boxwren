@@ -15,7 +15,7 @@ use crate::engine::{Engine, KillHandle};
 use crate::error::Error;
 use crate::limits::Limits;
 use crate::report::Report;
-use crate::run::{Entry, HasControl, RunControl, RunRequest, arm, report_from};
+use crate::run::{Entry, HasControl, RunControl, RunRequest, arm, begin_guest_wall, report_from};
 
 const MICROPYTHON: &[u8] = include_bytes!("../../../guests/interpreters/micropython-wasi.wasm");
 const QUICKJS: &[u8] = include_bytes!("../../../guests/interpreters/qjs-wasi.wasm");
@@ -165,7 +165,6 @@ fn execute_micropython(
         },
     );
     arm(&mut store, limits.fuel)?;
-    let started = store.data().control.started;
 
     let mut linker = Linker::new(engine.wasm());
     wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |state: &mut MpState| &mut state.wasi)?;
@@ -203,7 +202,7 @@ fn execute_micropython(
                     args: Vec::new(),
                 },
                 warnings,
-                started,
+                std::time::Instant::now(),
                 None,
                 Err(err),
             ));
@@ -215,6 +214,7 @@ fn execute_micropython(
             "micropython module does not export `_start`".into(),
         ));
     };
+    let started = begin_guest_wall(&mut store);
     let result = start.call(&mut store, &[], &mut []);
     Ok(report_from(
         store.get_fuel().unwrap_or(limits.fuel),

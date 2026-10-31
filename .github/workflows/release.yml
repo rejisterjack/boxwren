@@ -72,13 +72,16 @@ jobs:
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/boxwren${ext}" "dist/${{ matrix.artifact }}"
           lib="target/${{ matrix.target }}/release/"
-          # cdylib output: .dylib / .dll / .so (including musl). Also keep .rlib/.a if present.
+          # musl drops cdylib; ship staticlib (.a). Other targets ship the shared lib.
           case "${{ matrix.target }}" in
             *apple-darwin)
               cp "${lib}libboxwren_ffi.dylib" "dist/libboxwren_ffi-${{ matrix.target }}.dylib"
               ;;
             *windows*)
               cp "${lib}boxwren_ffi.dll" "dist/libboxwren_ffi-${{ matrix.target }}.dll"
+              ;;
+            *musl*)
+              cp "${lib}libboxwren_ffi.a" "dist/libboxwren_ffi-${{ matrix.target }}.a"
               ;;
             *)
               cp "${lib}libboxwren_ffi.so" "dist/libboxwren_ffi-${{ matrix.target }}.so"

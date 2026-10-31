@@ -11,7 +11,9 @@ publish = false
 
 [lib]
 name = "boxwren_ffi"
-crate-type = ["cdylib", "rlib"]
+# cdylib for dynamic link (gnu/mac/win). staticlib for musl — rustc drops
+# cdylib on x86_64-unknown-linux-musl.
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 boxwren = { path = "../boxwren" }

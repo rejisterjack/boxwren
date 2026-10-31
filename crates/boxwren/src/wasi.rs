@@ -20,7 +20,9 @@ use crate::caps::{Grants, NetGrant, event};
 use crate::engine::{Engine, KillHandle};
 use crate::error::Error;
 use crate::report::{Event, EventKind, Report};
-use crate::run::{Entry, HasControl, RunControl, RunRequest, arm, rejected_public, report_from};
+use crate::run::{
+    Entry, HasControl, RunControl, RunRequest, arm, begin_guest_wall, rejected_public, report_from,
+};
 
 const WASI_P1: &str = "wasi_snapshot_preview1";
 
@@ -85,7 +87,6 @@ pub(crate) fn execute_preview1(
         },
     );
     arm(&mut store, request.limits.fuel)?;
-    let started = store.data().control.started;
 
     let mut linker = Linker::new(engine.wasm());
     wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |state: &mut P1State| &mut state.wasi)?;
@@ -98,7 +99,7 @@ pub(crate) fn execute_preview1(
                 &store,
                 &request,
                 warnings,
-                started,
+                std::time::Instant::now(),
                 None,
                 Err(err),
             ));
@@ -126,6 +127,7 @@ pub(crate) fn execute_preview1(
         ));
     }
     let mut results = vec![Val::I32(0); ty.results().len()];
+    let started = begin_guest_wall(&mut store);
     let result = func.call(&mut store, &[], &mut results);
     let value = results.first().cloned();
     Ok(finish_p1(
@@ -163,14 +165,22 @@ pub(crate) fn execute_component(
         },
     );
     arm(&mut store, request.limits.fuel)?;
-    let started = store.data().control.started;
 
     let mut linker = ComponentLinker::new(engine.wasm());
     wasmtime_wasi::p2::add_to_linker_sync(&mut linker)?;
     let command = match Command::instantiate(&mut store, &component, &linker) {
         Ok(command) => command,
-        Err(err) => return Ok(finish_p2(&store, &request, warnings, started, Err(err))),
+        Err(err) => {
+            return Ok(finish_p2(
+                &store,
+                &request,
+                warnings,
+                std::time::Instant::now(),
+                Err(err),
+            ));
+        }
     };
+    let started = begin_guest_wall(&mut store);
     let result = match command.wasi_cli_run().call_run(&mut store) {
         Ok(Ok(())) => Ok(()),
         Ok(Err(())) => Err(exit_error(1)),

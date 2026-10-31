@@ -34,7 +34,8 @@ pub struct RunRequest {
 pub(crate) struct RunControl {
     pub limiter: RunLimiter,
     pub killed: Arc<AtomicBool>,
-    pub started: Instant,
+    /// Wall clock starts at guest entry (`begin_guest_wall`), not during compile/instantiate.
+    pub started: Option<Instant>,
     pub wall: Duration,
     pub timed_out: bool,
     pub journal: Arc<Mutex<Vec<Event>>>,
@@ -47,7 +48,7 @@ impl RunControl {
         Self {
             limiter: RunLimiter::new(limits.memory_bytes),
             killed,
-            started: Instant::now(),
+            started: None,
             wall: limits.wall_time,
             timed_out: false,
             journal: Arc::new(Mutex::new(Vec::new())),
@@ -149,11 +150,19 @@ fn execute_raw(
     };
 
     let mut store = open_store(engine, &request, kill)?;
-    let started = store.data().control.started;
 
     let instance = match Instance::new(&mut store, &module, &[]) {
         Ok(instance) => instance,
-        Err(err) => return Ok(finish(&store, &request, warnings, started, None, Err(err))),
+        Err(err) => {
+            return Ok(finish(
+                &store,
+                &request,
+                warnings,
+                Instant::now(),
+                None,
+                Err(err),
+            ));
+        }
     };
     let Some(func) = instance.get_func(&mut store, name) else {
         return Ok(rejected(
@@ -175,6 +184,7 @@ fn execute_raw(
         ));
     }
     let mut results = ty.results().map(zero_val).collect::<Vec<_>>();
+    let started = begin_guest_wall(&mut store);
     let result = func.call(&mut store, &[], &mut results);
     Ok(finish(
         &store,
@@ -222,20 +232,34 @@ where
 {
     store.set_fuel(fuel)?;
     store.limiter(|state| &mut state.control_mut().limiter);
-    store.data_mut().control_mut().started = Instant::now();
+    // Wall clock stays unset until `begin_guest_wall` so Cranelift compile and
+    // Wasm instantiate of large guests (e.g. QuickJS) do not burn the deadline.
+    store.data_mut().control_mut().started = None;
     store.epoch_deadline_callback(|mut store| {
         let control = store.data_mut().control_mut();
         if control.killed.load(Ordering::Acquire) {
             return Ok(UpdateDeadline::Interrupt);
         }
-        if control.started.elapsed() >= control.wall {
-            control.timed_out = true;
-            return Ok(UpdateDeadline::Interrupt);
+        if let Some(started) = control.started {
+            if started.elapsed() >= control.wall {
+                control.timed_out = true;
+                return Ok(UpdateDeadline::Interrupt);
+            }
         }
         Ok(UpdateDeadline::Continue(1))
     });
     store.set_epoch_deadline(1);
     Ok(())
+}
+
+/// Start measuring wall time for guest entry (after instantiate).
+pub(crate) fn begin_guest_wall<T>(store: &mut Store<T>) -> Instant
+where
+    T: HasControl,
+{
+    let now = Instant::now();
+    store.data_mut().control_mut().started = Some(now);
+    now
 }
 
 pub(crate) trait HasControl {
