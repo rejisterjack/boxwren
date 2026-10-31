@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use wasmtime::{Caller, Linker, Module, Store};
+use wasmtime::{Caller, Linker, Store};
 use wasmtime_wasi::p1::WasiP1Ctx;
 use wasmtime_wasi::{FsPerms, WasiCtxBuilder};
 
@@ -124,6 +124,10 @@ fn execute_micropython(
         ));
     }
 
+    // Compile before arming the store so wall-clock does not include Cranelift
+    // time for the ~370 KiB MicroPython guest (epoch ticks only after arm).
+    let module = engine.module(MICROPYTHON).map_err(Error::from)?;
+
     let control = RunControl::new(&limits, kill.flag());
     let stdout = control.stdout.clone();
     let stderr = control.stderr.clone();
@@ -183,7 +187,6 @@ fn execute_micropython(
          -> i32 { -1 },
     )?;
 
-    let module = Module::new(engine.wasm(), MICROPYTHON)?;
     let instance = match linker.instantiate(&mut store, &module) {
         Ok(instance) => instance,
         Err(err) => {
