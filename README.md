@@ -103,6 +103,16 @@ PYTHONPATH=. python3 -c 'import boxwren_py; print(boxwren_py.Engine())'
 
 Go (`go get github.com/rejisterjack/boxwren/bindings/go`): the package wraps the C ABI in `crates/boxwren-ffi`, not a second sandbox. `cargo build -p boxwren-ffi --release`, then `go test` in `bindings/go`. Grants use the same strings as the CLI. `Engine.KillHandle()` and `ExecuteWith(wasm, request, kill)` stop one run from any goroutine.
 
+## Releasing
+
+Push an annotated tag `v*` on `main`. GitHub Actions then:
+
+1. Builds multi-OS `boxwren` CLI binaries and `libboxwren_ffi` artifacts and creates a GitHub Release
+2. Runs `cargo publish -p boxwren` (needs repository secret `CARGO_REGISTRY_TOKEN`)
+3. Builds and publishes `boxwren-py` wheels (needs repository secret `PYPI_API_TOKEN` and a `pypi` environment)
+
+Without those secrets the GitHub Release still publishes; crates.io and PyPI jobs fail until the tokens are set.
+
 ## License
 
 MIT OR Apache-2.0. See `LICENSE-MIT` and `LICENSE-APACHE`.
