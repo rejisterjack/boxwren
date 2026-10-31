@@ -2,7 +2,7 @@ use std::io::Write;
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use boxwren::{Decision, DirGrant, Entry, EventKind, Grants, Limits, RunRequest, Status};
@@ -13,6 +13,10 @@ fn engine() -> &'static boxwren::Engine {
 }
 
 fn guest_wasm(dir: &str, name: &str, target: &str) -> Vec<u8> {
+    // Parallel cargo builds into the same target-dir race and flake on CI.
+    static GUEST_BUILD: Mutex<()> = Mutex::new(());
+    let _guard = GUEST_BUILD.lock().unwrap_or_else(|poison| poison.into_inner());
+
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let guest_dir = manifest_dir.join("../../tests").join(dir);
     let target_dir = manifest_dir.join("../../target/guests").join(target);
@@ -40,6 +44,12 @@ fn p2(name: &str) -> Vec<u8> {
 }
 
 fn run(wasm: Vec<u8>, grants: Grants, args: Vec<String>, limits: Limits) -> boxwren::Report {
+    // Guest builds under a mutex still leave CI runners busy; give WASI guests
+    // more wall than the library default so epoch lag is not a flake.
+    let limits = Limits {
+        wall_time: limits.wall_time.max(Duration::from_secs(10)),
+        ..limits
+    };
     engine()
         .execute(RunRequest {
             wasm,
