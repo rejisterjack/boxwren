@@ -15,7 +15,9 @@ fn engine() -> &'static boxwren::Engine {
 fn guest_wasm(dir: &str, name: &str, target: &str) -> Vec<u8> {
     // Parallel cargo builds into the same target-dir race and flake on CI.
     static GUEST_BUILD: Mutex<()> = Mutex::new(());
-    let _guard = GUEST_BUILD.lock().unwrap_or_else(|poison| poison.into_inner());
+    let _guard = GUEST_BUILD
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
 
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let guest_dir = manifest_dir.join("../../tests").join(dir);
