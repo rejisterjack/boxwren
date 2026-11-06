@@ -42,14 +42,22 @@ present, otherwise a shared `anon` bucket.
 
 ## Deploy
 
-Build a container (`Dockerfile.server`) and run on Fly.io or any host that can
-execute native Wasmtime. Point the Next.js dashboard at the public API with
-`NEXT_PUBLIC_BOXWREN_API_URL`. Set `BOXWREN_CORS_ORIGINS` to that dashboard’s
-origin (and any other frontends).
+Production is two pieces.
 
-Optional: set `KEYWARDEN_URL` so each run is admitted by Keywarden before the
-guest starts. Boxwren still does not enforce Keywarden policy inside WASI
-imports.
+| Piece | Where | Notes |
+| --- | --- | --- |
+| API | Railway service `boxwren-api` | `Dockerfile.server`. One replica. SQLite on a volume mounted at `/data`. |
+| Dashboard | Vercel project `boxwren`, root `web/` | `https://boxwren.rejisterjack.com`. |
+
+`railway.toml` builds `Dockerfile.server` and checks `/healthz`. Set `PORT` to the same value as the listen port (`8787`). The process binds `$PORT` when that variable is a non-zero port. `BOXWREN_DB=/data/boxwren.sqlite`. Do not declare a Docker `VOLUME`; the platform mounts `/data`. The default CORS allowlist already includes `https://boxwren.rejisterjack.com`. Set `BOXWREN_CORS_ORIGINS` when another browser origin should be allowed.
+
+Point the dashboard at the public API with `NEXT_PUBLIC_BOXWREN_API_URL`, then redeploy so the value is baked into the client bundle.
+
+The free Railway plan sleeps the API when it is idle and allows one project, so this service shares that project. A paid plan can set `sleepApplication = false` in `railway.toml`.
+
+`fly.toml` is the same container for Fly.io: one machine, autostop off, volume at `/data`.
+
+Optional: set `KEYWARDEN_URL` so each run is admitted by Keywarden before the guest starts. Boxwren still does not enforce Keywarden policy inside WASI imports.
 
 ## Residual risks
 

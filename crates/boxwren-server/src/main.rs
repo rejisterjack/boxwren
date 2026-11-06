@@ -104,6 +104,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
     let args = Args::parse();
+    // Railway health-checks $PORT. BOXWREN_LISTEN remains the local default.
+    let listen = listen_addr(args.listen, std::env::var("PORT").ok().as_deref());
     let db = Db::open(&args.db)?;
     let engine = boxwren::Engine::new()?;
     let state = Arc::new(AppState {
@@ -120,10 +122,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let origins = parse_cors_origins(args.cors_origins.as_deref());
     let app = build_app(state, &origins);
 
-    tracing::info!(%args.listen, db = %args.db.display(), "listening");
-    let listener = tokio::net::TcpListener::bind(args.listen).await?;
+    tracing::info!(%listen, db = %args.db.display(), "listening");
+    let listener = tokio::net::TcpListener::bind(listen).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+/// `PORT` wins when it is a non-zero port, so a platform health check and the
+/// process bind the same socket. Anything else keeps the configured address.
+fn listen_addr(configured: SocketAddr, port: Option<&str>) -> SocketAddr {
+    let Some(raw) = port.map(str::trim).filter(|value| !value.is_empty()) else {
+        return configured;
+    };
+    match raw.parse::<u16>() {
+        Ok(port) if port != 0 => SocketAddr::from(([0, 0, 0, 0], port)),
+        _ => configured,
+    }
 }
 
 fn parse_cors_origins(raw: Option<&str>) -> Vec<String> {
@@ -677,6 +691,19 @@ mod tests {
     async fn body_string(res: Response) -> String {
         let bytes = res.into_body().collect().await.unwrap().to_bytes();
         String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[test]
+    fn port_overrides_listen_addr() {
+        let configured: SocketAddr = "127.0.0.1:8787".parse().unwrap();
+        assert_eq!(
+            listen_addr(configured, Some("8787")),
+            "0.0.0.0:8787".parse().unwrap()
+        );
+        assert_eq!(listen_addr(configured, None), configured);
+        assert_eq!(listen_addr(configured, Some("")), configured);
+        assert_eq!(listen_addr(configured, Some("nope")), configured);
+        assert_eq!(listen_addr(configured, Some("0")), configured);
     }
 
     #[tokio::test]

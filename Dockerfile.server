@@ -8,8 +8,8 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/target/release/boxwren-server /usr/local/bin/boxwren-server
+ENV PORT=8787
 ENV BOXWREN_LISTEN=0.0.0.0:8787
 ENV BOXWREN_DB=/data/boxwren.sqlite
-VOLUME ["/data"]
 EXPOSE 8787
 CMD ["boxwren-server"]
