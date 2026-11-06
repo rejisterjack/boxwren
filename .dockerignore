@@ -1,0 +1,8 @@
+target
+.git
+.github
+web/node_modules
+web/.next
+**/*.sqlite
+**/*.sqlite-*
+.DS_Store

@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use boxwren::{DirGrant, Entry, EnvGrant, Grants, Limits, NetGrant, Report, RunRequest, Status};
 use clap::{Parser, Subcommand, ValueEnum};
+use serde_json::{Value, json};
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
@@ -33,6 +34,13 @@ fn main() -> ExitCode {
         },
         Command::Demo { report } => match demo(report) {
             Ok(code) => code,
+            Err(err) => {
+                eprintln!("boxwren: {err}");
+                ExitCode::from(2)
+            }
+        },
+        Command::ExportUndoom(args) => match export_undoom(args) {
+            Ok(()) => ExitCode::SUCCESS,
             Err(err) => {
                 eprintln!("boxwren: {err}");
                 ExitCode::from(2)
@@ -68,6 +76,23 @@ enum Command {
         #[arg(long, value_enum, default_value_t = ReportFormat::Text)]
         report: ReportFormat,
     },
+    /// Wrap a Boxwren schema v1 report as an Undoom run document (`report_json`).
+    ExportUndoom(ExportUndoomArgs),
+}
+
+#[derive(Parser)]
+struct ExportUndoomArgs {
+    /// Path to Boxwren report JSON (`boxwren run --report json > report.json`).
+    report: PathBuf,
+    /// Write the Undoom document here. Default: stdout.
+    #[arg(short, long)]
+    output: Option<PathBuf>,
+    /// Undoom `agent` field.
+    #[arg(long, default_value = "boxwren")]
+    agent: String,
+    /// Undoom `name` field.
+    #[arg(long, default_value = "boxwren-run")]
+    name: String,
 }
 
 #[cfg(feature = "interpreters")]
@@ -259,6 +284,95 @@ fn print_report(report: &Report, format: ReportFormat) {
         ReportFormat::Text => print!("{}", report.to_text()),
     }
     let _ = std::io::Write::flush(&mut std::io::stdout());
+}
+
+fn export_undoom(args: ExportUndoomArgs) -> Result<(), String> {
+    let raw = std::fs::read_to_string(&args.report)
+        .map_err(|err| format!("could not read {}: {err}", args.report.display()))?;
+    let report: Value = serde_json::from_str(&raw).map_err(|err| format!("report JSON: {err}"))?;
+    if report.get("schema_version").and_then(|v| v.as_u64()) != Some(1) {
+        return Err("expected Boxwren report schema_version 1".into());
+    }
+    let doc = undoom_run_from_report(&report, &args.agent, &args.name)?;
+    let text = serde_json::to_string_pretty(&doc).map_err(|err| err.to_string())?;
+    match &args.output {
+        Some(path) => {
+            if let Some(parent) = path.parent()
+                && !parent.as_os_str().is_empty()
+            {
+                std::fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+            }
+            std::fs::write(path, format!("{text}\n")).map_err(|err| err.to_string())?;
+        }
+        None => {
+            println!("{text}");
+        }
+    }
+    Ok(())
+}
+
+/// Build an Undoom schema v1 Run with a single `boxwren.execute` tool step.
+fn undoom_run_from_report(report: &Value, agent: &str, name: &str) -> Result<Value, String> {
+    let kind = report
+        .pointer("/status/kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("trapped");
+    let success = kind == "success";
+    let failure_reason = if success {
+        Value::Null
+    } else {
+        Value::String(format!("boxwren status: {kind}"))
+    };
+    let error = if success {
+        Value::Null
+    } else {
+        Value::String(kind.to_string())
+    };
+    let call_id = format!("bw_{}", hex_id());
+    let created_at = unix_secs();
+    Ok(json!({
+        "schema_version": 1,
+        "id": hex_id(),
+        "agent": agent,
+        "name": name,
+        "status": if success { "success" } else { "failure" },
+        "failure_reason": failure_reason,
+        "unexpected_tools": [],
+        // Undoom/Pydantic accept Unix seconds for datetime fields.
+        "created_at": created_at,
+        "steps": [{
+            "kind": "tool",
+            "call_id": call_id,
+            "name": "boxwren.execute",
+            "arguments": {},
+            "result": report,
+            "error": error,
+        }],
+        "metadata": {
+            "source": "boxwren",
+            "report_json": report,
+        }
+    }))
+}
+
+fn hex_id() -> String {
+    format!("{:x}", unix_nanos())
+}
+
+fn unix_secs() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+fn unix_nanos() -> u128 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0)
 }
 
 fn exit_code(report: &Report) -> ExitCode {

@@ -146,3 +146,49 @@ fn demo_blocks_secret_network_and_memory() {
     }));
     assert!(matches!(reports[2].status, Status::MemoryLimited));
 }
+
+#[test]
+fn export_undoom_wraps_report_json() {
+    let module = write_module(
+        "exit.wat",
+        r#"
+        (module
+          (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+          (memory (export "memory") 1)
+          (func (export "_start")
+            (call $exit (i32.const 0))))
+        "#,
+    );
+    let report_path = module.with_extension("report.json");
+    let run = Command::new(bin())
+        .args(["run", module.to_str().unwrap(), "--report", "json"])
+        .output()
+        .unwrap();
+    assert!(run.status.success(), "{run:?}");
+    std::fs::write(&report_path, &run.stdout).unwrap();
+
+    let out_path = module.with_extension("undoom.json");
+    let export = Command::new(bin())
+        .args([
+            "export-undoom",
+            report_path.to_str().unwrap(),
+            "-o",
+            out_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        export.status.success(),
+        "stderr {}",
+        String::from_utf8_lossy(&export.stderr)
+    );
+    let doc: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&out_path).unwrap()).unwrap();
+    assert_eq!(doc["schema_version"], 1);
+    assert_eq!(doc["agent"], "boxwren");
+    assert_eq!(doc["status"], "success");
+    assert_eq!(doc["steps"][0]["name"], "boxwren.execute");
+    assert_eq!(doc["steps"][0]["result"]["schema_version"], 1);
+    assert_eq!(doc["metadata"]["source"], "boxwren");
+    assert!(doc["metadata"]["report_json"].is_object());
+}

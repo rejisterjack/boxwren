@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [newKey, setNewKey] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [report, setReport] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [wat, setWat] = useState(`(module
@@ -112,12 +113,14 @@ export default function DashboardPage() {
   async function runModule(event: FormEvent) {
     event.preventDefault();
     setError("");
+    setActiveRunId(null);
     const res = await fetch(`${API}/v1/runs`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         wasm_text: wat,
         entry: "run",
+        wait: false,
       }),
     });
     if (!res.ok) {
@@ -126,8 +129,39 @@ export default function DashboardPage() {
     }
     const body = await res.json();
     setSelected(body.id);
-    setReport(JSON.stringify(body.report, null, 2));
+    setActiveRunId(body.id);
+    setReport("");
     await refresh();
+    try {
+      for (;;) {
+        const poll = await fetch(`${API}/v1/runs/${body.id}`, { headers });
+        if (!poll.ok) {
+          setError(await poll.text());
+          break;
+        }
+        const row = await poll.json();
+        if (row.status !== "running") {
+          setReport(JSON.stringify(row.report ?? {}, null, 2));
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    } finally {
+      setActiveRunId(null);
+      await refresh();
+    }
+  }
+
+  async function killActive() {
+    if (!activeRunId) return;
+    setError("");
+    const res = await fetch(`${API}/v1/runs/${activeRunId}/kill`, {
+      method: "POST",
+      headers,
+    });
+    if (!res.ok && res.status !== 202) {
+      setError(await res.text());
+    }
   }
 
   async function openRun(id: string) {
@@ -234,11 +268,32 @@ export default function DashboardPage() {
                 rows={8}
                 value={wat}
                 onChange={(e) => setWat(e.target.value)}
+                disabled={!!activeRunId}
               />
             </div>
-            <button className="btn btn-primary" type="submit">
-              Execute
-            </button>
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button
+                className="btn btn-primary"
+                type="submit"
+                disabled={!!activeRunId}
+              >
+                {activeRunId ? "Running…" : "Execute"}
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                disabled={!activeRunId}
+                onClick={() => void killActive()}
+              >
+                Kill
+              </button>
+            </div>
+            {activeRunId ? (
+              <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.85rem" }}>
+                Active run <code>{activeRunId.slice(0, 8)}</code> — Kill posts to{" "}
+                <code>/v1/runs/…/kill</code>.
+              </p>
+            ) : null}
           </form>
 
           <div className="panel">
