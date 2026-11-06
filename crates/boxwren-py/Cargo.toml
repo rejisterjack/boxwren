@@ -13,6 +13,11 @@ publish = false
 name = "boxwren_py"
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# Maturin enables this for wheels. It builds against manylinux Pythons that
+# have no shared libpython.
+extension-module = ["pyo3/extension-module"]
+
 [dependencies]
 boxwren = { path = "../boxwren" }
 pyo3.workspace = true
