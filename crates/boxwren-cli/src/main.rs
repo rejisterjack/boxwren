@@ -297,10 +297,10 @@ fn export_undoom(args: ExportUndoomArgs) -> Result<(), String> {
     let text = serde_json::to_string_pretty(&doc).map_err(|err| err.to_string())?;
     match &args.output {
         Some(path) => {
-            if let Some(parent) = path.parent() {
-                if !parent.as_os_str().is_empty() {
-                    std::fs::create_dir_all(parent).map_err(|err| err.to_string())?;
-                }
+            if let Some(parent) = path.parent()
+                && !parent.as_os_str().is_empty()
+            {
+                std::fs::create_dir_all(parent).map_err(|err| err.to_string())?;
             }
             std::fs::write(path, format!("{text}\n")).map_err(|err| err.to_string())?;
         }
