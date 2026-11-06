@@ -42,20 +42,15 @@ present, otherwise a shared `anon` bucket.
 
 ## Deploy
 
-Production is two pieces.
+The hosted API is optional. The public site does not run it. Developers use the library, the CLI, and the language bindings.
 
-| Piece | Where | Notes |
-| --- | --- | --- |
-| API | Railway service `boxwren-api` | `Dockerfile.server`. One replica. SQLite on a volume mounted at `/data`. |
-| Dashboard | Vercel project `boxwren`, root `web/` | `https://boxwren.rejisterjack.com`. |
+Build `Dockerfile.server` and run it on one machine that can execute native Wasmtime. SQLite is the file at `BOXWREN_DB` (default `boxwren-server.sqlite`). Put that file on a persistent disk. The kill map is in memory, so the process does not scale out.
 
-`railway.toml` builds `Dockerfile.server` and checks `/healthz`. Set `PORT` to the same value as the listen port (`8787`). The process binds `$PORT` when that variable is a non-zero port. `BOXWREN_DB=/data/boxwren.sqlite`. Do not declare a Docker `VOLUME`; the platform mounts `/data`. The default CORS allowlist already includes `https://boxwren.rejisterjack.com`. Set `BOXWREN_CORS_ORIGINS` when another browser origin should be allowed.
+The process binds `$PORT` when that variable is a non-zero port, otherwise `BOXWREN_LISTEN` (default `127.0.0.1:8787`). Do not declare a Docker `VOLUME`; the host mounts the data directory. The default CORS allowlist includes localhost and `https://boxwren.rejisterjack.com`. Set `BOXWREN_CORS_ORIGINS` when another browser origin should be allowed.
 
-Point the dashboard at the public API with `NEXT_PUBLIC_BOXWREN_API_URL`, then redeploy so the value is baked into the client bundle.
+`fly.toml` is one such host: one machine, autostop off, volume at `/data`, listen `0.0.0.0:8787`.
 
-The free Railway plan sleeps the API when it is idle and allows one project, so this service shares that project. A paid plan can set `sleepApplication = false` in `railway.toml`.
-
-`fly.toml` is the same container for Fly.io: one machine, autostop off, volume at `/data`.
+Point a dashboard at that API with `NEXT_PUBLIC_BOXWREN_API_URL`, then rebuild the dashboard so the value is baked into the client bundle.
 
 Optional: set `KEYWARDEN_URL` so each run is admitted by Keywarden before the guest starts. Boxwren still does not enforce Keywarden policy inside WASI imports.
 
