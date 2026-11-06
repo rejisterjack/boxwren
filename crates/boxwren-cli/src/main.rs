@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use boxwren::{DirGrant, Entry, EnvGrant, Grants, Limits, NetGrant, Report, RunRequest, Status};
 use clap::{Parser, Subcommand, ValueEnum};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
@@ -289,8 +289,7 @@ fn print_report(report: &Report, format: ReportFormat) {
 fn export_undoom(args: ExportUndoomArgs) -> Result<(), String> {
     let raw = std::fs::read_to_string(&args.report)
         .map_err(|err| format!("could not read {}: {err}", args.report.display()))?;
-    let report: Value = serde_json::from_str(&raw)
-        .map_err(|err| format!("report JSON: {err}"))?;
+    let report: Value = serde_json::from_str(&raw).map_err(|err| format!("report JSON: {err}"))?;
     if report.get("schema_version").and_then(|v| v.as_u64()) != Some(1) {
         return Err("expected Boxwren report schema_version 1".into());
     }

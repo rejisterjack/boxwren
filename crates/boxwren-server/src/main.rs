@@ -386,7 +386,9 @@ async fn create_run(
         guard.insert(id.clone(), kill.clone());
     }
 
-    state.db.insert_run(&id, &account.id, "running", 0, 0, "{}")?;
+    state
+        .db
+        .insert_run(&id, &account.id, "running", 0, 0, "{}")?;
 
     let engine = state.engine.clone();
     let request = RunRequest {
@@ -398,7 +400,8 @@ async fn create_run(
     };
 
     if body.wait {
-        let outcome = tokio::task::spawn_blocking(move || engine.execute_with(request, &kill)).await;
+        let outcome =
+            tokio::task::spawn_blocking(move || engine.execute_with(request, &kill)).await;
         {
             let mut guard = state.inflight.lock().await;
             guard.remove(&id);
@@ -411,14 +414,10 @@ async fn create_run(
                     "schema_version": 1,
                     "status": { "kind": "rejected", "message": message }
                 });
-                let _ = state.db.update_run(
-                    &id,
-                    &account.id,
-                    "rejected",
-                    0,
-                    0,
-                    &payload.to_string(),
-                );
+                let _ =
+                    state
+                        .db
+                        .update_run(&id, &account.id, "rejected", 0, 0, &payload.to_string());
                 return Err(ApiError::bad(err.to_string()));
             }
             Err(err) => {
@@ -427,14 +426,10 @@ async fn create_run(
                     "schema_version": 1,
                     "status": { "kind": "rejected", "message": message }
                 });
-                let _ = state.db.update_run(
-                    &id,
-                    &account.id,
-                    "rejected",
-                    0,
-                    0,
-                    &payload.to_string(),
-                );
+                let _ =
+                    state
+                        .db
+                        .update_run(&id, &account.id, "rejected", 0, 0, &payload.to_string());
                 return Err(ApiError::internal(message));
             }
         };
@@ -459,8 +454,8 @@ async fn create_run(
         let account_id = account.id.clone();
         let run_id = id.clone();
         tokio::spawn(async move {
-            let report = tokio::task::spawn_blocking(move || engine.execute_with(request, &kill))
-                .await;
+            let report =
+                tokio::task::spawn_blocking(move || engine.execute_with(request, &kill)).await;
             {
                 let mut guard = state_bg.inflight.lock().await;
                 guard.remove(&run_id);
