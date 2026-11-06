@@ -17,11 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # One interpreter per job. The 2_28 image's default python is CPython 3.12
-          # and already ships a shared library; naming both at once does not.
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             python: "3.12"
+            interpreters: "-i python3.12"
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             python: "3.13"
@@ -29,6 +28,7 @@ jobs:
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             python: "3.12"
+            interpreters: "-i python3.12"
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             python: "3.13"
