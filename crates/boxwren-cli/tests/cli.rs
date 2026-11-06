@@ -52,6 +52,40 @@ fn json_report_matches_a_wasi_exit() {
 }
 
 #[test]
+fn export_entry_returns_the_i32_result() {
+    let module = write_module(
+        "add.wat",
+        r#"
+        (module
+          (func (export "run") (result i32)
+            i32.const 2
+            i32.const 2
+            i32.add))
+        "#,
+    );
+    let output = Command::new(bin())
+        .args([
+            "run",
+            module.to_str().unwrap(),
+            "--entry",
+            "run",
+            "--report",
+            "json",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "status {:?} stdout {} stderr {}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report: boxwren::Report = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report.return_value, Some(4));
+}
+
+#[test]
 fn invalid_grant_fails_before_the_module_runs() {
     let module = write_module("(module)", "(module)");
     let output = Command::new(bin())

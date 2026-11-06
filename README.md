@@ -107,25 +107,25 @@ PYTHONPATH=. python3 -c 'import boxwren_py; print(boxwren_py.Engine())'
 
 Go (`go get github.com/rejisterjack/boxwren/bindings/go`): the package wraps the C ABI in `crates/boxwren-ffi`, not a second sandbox. `cargo build -p boxwren-ffi --release`, then `go test` in `bindings/go`. Grants use the same strings as the CLI. `Engine.KillHandle()` and `ExecuteWith(wasm, request, kill)` stop one run from any goroutine.
 
-## Hosted (optional)
+## Hosted
 
-Run the multi-tenant HTTP API locally:
+The public site serves `/v1` from the Next.js app. Neon stores accounts and reports. Runs are synchronous and deny filesystem, network, and environment grants. A live kill is the local server:
 
 ```bash
 cargo run -p boxwren-server -- --listen 127.0.0.1:8787 --db /tmp/boxwren.sqlite
 ```
 
-Point the dashboard at it (`NEXT_PUBLIC_BOXWREN_API_URL`) from `web/`. Full deploy notes, CORS allowlist, and Keywarden admission: [docs/HOSTED.md](docs/HOSTED.md). OpenAPI stub: [docs/openapi.yaml](docs/openapi.yaml).
+Leave `NEXT_PUBLIC_BOXWREN_API_URL` empty on the public site. Set it when a dashboard should call that local server. Details: [docs/HOSTED.md](docs/HOSTED.md). OpenAPI: [docs/openapi.yaml](docs/openapi.yaml).
 
 ## Releasing
 
 Push an annotated tag `v*` on `main`. GitHub Actions then:
 
 1. Builds multi-OS `boxwren` CLI binaries and `libboxwren_ffi` artifacts and creates a GitHub Release
-2. Runs `cargo publish -p boxwren` (needs repository secret `CARGO_REGISTRY_TOKEN`)
-3. Builds and publishes `boxwren-py` wheels (needs repository secret `PYPI_API_TOKEN` and a `pypi` environment)
+2. Runs `cargo publish -p boxwren` with the repository secret `CARGO_REGISTRY_TOKEN`
+3. Builds and publishes `boxwren-py` wheels with the repository secret `PYPI_API_TOKEN` and the `pypi` environment
 
-Without those secrets the GitHub Release still publishes; crates.io and PyPI jobs fail until the tokens are set.
+Both secrets are already set.
 
 ## License
 
