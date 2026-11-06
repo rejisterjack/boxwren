@@ -19,3 +19,5 @@
 .vscode/
 web/node_modules
 web/.next
+web/bin/
+.vercel

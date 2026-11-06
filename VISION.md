@@ -69,8 +69,8 @@ Agents increasingly write and execute code on developer machines and servers. On
 |----------|---------|
 | Library | [crates.io](https://crates.io) (`boxwren`) |
 | Binaries | GitHub releases |
-| Hosted API | Self-host `boxwren-server` ([docs/HOSTED.md](docs/HOSTED.md)) |
-| Dashboard | `web/app/dashboard` against your API |
+| Hosted API | Next.js `/v1` on the public site, Neon for rows. Local `boxwren-server` for a live kill ([docs/HOSTED.md](docs/HOSTED.md)) |
+| Dashboard | `web/app/dashboard` on the same origin |
 
 Hosted execution is optional. Local embed remains the primary path.
 

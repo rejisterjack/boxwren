@@ -6,8 +6,10 @@ info:
     Local-first embed remains the primary path; see docs/HOSTED.md.
   version: 0.1.0
 servers:
+  - url: https://boxwren.rejisterjack.com
+    description: Public Next.js API. Grants are ignored. wait=false is 400. Kill is 409.
   - url: http://127.0.0.1:8787
-    description: Local boxwren-server
+    description: Local boxwren-server, including live kill
 paths:
   /healthz:
     get:
@@ -156,9 +158,11 @@ paths:
         - $ref: "#/components/parameters/RunId"
       responses:
         "202":
-          description: Kill requested
+          description: Kill requested on the local server
         "404":
-          description: Run not in flight
+          description: Run not in flight on the local server
+        "409":
+          description: Public API has no in-flight kill map. Use the local server.
 components:
   securitySchemes:
     bearerAuth:

@@ -12,9 +12,7 @@ type RunRow = {
   created_at: string;
 };
 
-const API =
-  process.env.NEXT_PUBLIC_BOXWREN_API_URL?.replace(/\/$/, "") ||
-  "http://127.0.0.1:8787";
+const API = process.env.NEXT_PUBLIC_BOXWREN_API_URL?.replace(/\/$/, "") || "";
 
 export default function DashboardPage() {
   const [token, setToken] = useState("");
@@ -24,7 +22,7 @@ export default function DashboardPage() {
   const [newKey, setNewKey] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
   const [report, setReport] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [wat, setWat] = useState(`(module
@@ -113,54 +111,26 @@ export default function DashboardPage() {
   async function runModule(event: FormEvent) {
     event.preventDefault();
     setError("");
-    setActiveRunId(null);
-    const res = await fetch(`${API}/v1/runs`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        wasm_text: wat,
-        entry: "run",
-        wait: false,
-      }),
-    });
-    if (!res.ok) {
-      setError(await res.text());
-      return;
-    }
-    const body = await res.json();
-    setSelected(body.id);
-    setActiveRunId(body.id);
-    setReport("");
-    await refresh();
+    setRunning(true);
     try {
-      for (;;) {
-        const poll = await fetch(`${API}/v1/runs/${body.id}`, { headers });
-        if (!poll.ok) {
-          setError(await poll.text());
-          break;
-        }
-        const row = await poll.json();
-        if (row.status !== "running") {
-          setReport(JSON.stringify(row.report ?? {}, null, 2));
-          break;
-        }
-        await new Promise((r) => setTimeout(r, 200));
+      const res = await fetch(`${API}/v1/runs`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          wasm_text: wat,
+          entry: "run",
+        }),
+      });
+      if (!res.ok) {
+        setError(await res.text());
+        return;
       }
-    } finally {
-      setActiveRunId(null);
+      const body = await res.json();
+      setSelected(body.id);
+      setReport(JSON.stringify(body.report ?? {}, null, 2));
       await refresh();
-    }
-  }
-
-  async function killActive() {
-    if (!activeRunId) return;
-    setError("");
-    const res = await fetch(`${API}/v1/runs/${activeRunId}/kill`, {
-      method: "POST",
-      headers,
-    });
-    if (!res.ok && res.status !== 202) {
-      setError(await res.text());
+    } finally {
+      setRunning(false);
     }
   }
 
@@ -181,9 +151,8 @@ export default function DashboardPage() {
         Dashboard
       </h1>
       <p className="muted">
-        Create an account on the hosted API, manage keys, and inspect run
-        reports. Point{" "}
-        <code>NEXT_PUBLIC_BOXWREN_API_URL</code> at your{" "}
+        Create an account, manage keys, and inspect run reports. This host
+        finishes each run inside the request. A live kill still needs the local{" "}
         <code>boxwren-server</code>.
       </p>
 
@@ -268,32 +237,15 @@ export default function DashboardPage() {
                 rows={8}
                 value={wat}
                 onChange={(e) => setWat(e.target.value)}
-                disabled={!!activeRunId}
+                disabled={running}
               />
             </div>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <button
-                className="btn btn-primary"
-                type="submit"
-                disabled={!!activeRunId}
-              >
-                {activeRunId ? "Running…" : "Execute"}
-              </button>
-              <button
-                className="btn btn-ghost"
-                type="button"
-                disabled={!activeRunId}
-                onClick={() => void killActive()}
-              >
-                Kill
-              </button>
-            </div>
-            {activeRunId ? (
-              <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.85rem" }}>
-                Active run <code>{activeRunId.slice(0, 8)}</code> — Kill posts to{" "}
-                <code>/v1/runs/…/kill</code>.
-              </p>
-            ) : null}
+            <button className="btn btn-primary" type="submit" disabled={running}>
+              {running ? "Running…" : "Execute"}
+            </button>
+            <p className="muted" style={{ marginTop: "0.75rem", fontSize: "0.85rem" }}>
+              Filesystem, network, and environment grants are denied on this host.
+            </p>
           </form>
 
           <div className="panel">

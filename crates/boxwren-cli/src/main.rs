@@ -139,6 +139,9 @@ struct RunArgs {
     /// Wall-clock deadline. Examples: `2s`, `500ms`.
     #[arg(long, value_name = "DURATION")]
     timeout: Option<String>,
+    /// Export to call. `_start` runs the module as a WASI command.
+    #[arg(long, default_value = "_start")]
+    entry: String,
     /// `host:guest`, `host:guest:ro`, or `host:guest:rw`. Default mode is read-only.
     #[arg(long = "allow-dir", value_name = "HOST:GUEST[:ro|rw]")]
     allow_dir: Vec<String>,
@@ -226,11 +229,16 @@ fn run(args: RunArgs) -> Result<ExitCode, String> {
         eprintln!("boxwren: ready");
         let _ = std::io::Write::flush(&mut std::io::stderr());
     }
+    let entry = if args.entry == "_start" {
+        Entry::Command { args: argv }
+    } else {
+        Entry::Export(args.entry)
+    };
     let report = engine
         .execute_with(
             RunRequest {
                 wasm,
-                entry: Entry::Command { args: argv },
+                entry,
                 limits,
                 grants,
                 args: Vec::new(),
