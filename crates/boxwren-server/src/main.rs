@@ -7,10 +7,13 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use axum::extract::{Path, State};
-use axum::http::{HeaderMap, StatusCode};
+use axum::body::Body;
+use axum::extract::{Path, Request, State};
+use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+use axum::middleware::{self, Next};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use boxwren::{
@@ -19,12 +22,19 @@ use boxwren::{
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 use crate::db::{Account, ApiKeyRow, Db, RunRow};
 use crate::policy::preflight_keywarden;
+
+/// Default browser origins allowed when `BOXWREN_CORS_ORIGINS` is unset.
+const DEFAULT_CORS_ORIGINS: &[&str] = &[
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "https://boxwren.rejisterjack.com",
+];
 
 #[derive(Parser, Debug)]
 #[command(name = "boxwren-server")]
@@ -36,6 +46,45 @@ struct Args {
     /// Optional Keywarden admission URL. POST JSON `{ "action": "boxwren.run", ... }`.
     #[arg(long, env = "KEYWARDEN_URL")]
     keywarden_url: Option<String>,
+    /// Comma-separated CORS allowlist. Defaults to localhost:3000 and the public site.
+    #[arg(long, env = "BOXWREN_CORS_ORIGINS")]
+    cors_origins: Option<String>,
+    /// Max `/v1` requests per client key per window.
+    #[arg(long, env = "BOXWREN_RATE_LIMIT", default_value_t = 60)]
+    rate_limit: u32,
+    /// Rate-limit window in seconds.
+    #[arg(long, env = "BOXWREN_RATE_WINDOW_SECS", default_value_t = 60)]
+    rate_window_secs: u64,
+}
+
+struct RateLimiter {
+    limit: u32,
+    window: Duration,
+    hits: Mutex<HashMap<String, (Instant, u32)>>,
+}
+
+impl RateLimiter {
+    fn new(limit: u32, window: Duration) -> Self {
+        Self {
+            limit: limit.max(1),
+            window,
+            hits: Mutex::new(HashMap::new()),
+        }
+    }
+
+    async fn check(&self, key: &str) -> bool {
+        let mut guard = self.hits.lock().await;
+        let now = Instant::now();
+        let entry = guard.entry(key.to_string()).or_insert((now, 0));
+        if now.duration_since(entry.0) >= self.window {
+            *entry = (now, 0);
+        }
+        if entry.1 >= self.limit {
+            return false;
+        }
+        entry.1 += 1;
+        true
+    }
 }
 
 struct AppState {
@@ -43,6 +92,7 @@ struct AppState {
     engine: boxwren::Engine,
     inflight: Mutex<HashMap<String, KillHandle>>,
     keywarden_url: Option<String>,
+    limiter: RateLimiter,
 }
 
 #[tokio::main]
@@ -61,24 +111,93 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         engine,
         inflight: Mutex::new(HashMap::new()),
         keywarden_url: args.keywarden_url,
+        limiter: RateLimiter::new(
+            args.rate_limit,
+            Duration::from_secs(args.rate_window_secs.max(1)),
+        ),
     });
 
-    let app = Router::new()
-        .route("/healthz", get(|| async { "ok" }))
+    let origins = parse_cors_origins(args.cors_origins.as_deref());
+    let app = build_app(state, &origins);
+
+    tracing::info!(%args.listen, db = %args.db.display(), "listening");
+    let listener = tokio::net::TcpListener::bind(args.listen).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+
+fn parse_cors_origins(raw: Option<&str>) -> Vec<String> {
+    match raw {
+        Some(s) if !s.trim().is_empty() => s
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => DEFAULT_CORS_ORIGINS
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect(),
+    }
+}
+
+fn cors_layer(origins: &[String]) -> CorsLayer {
+    let values: Vec<HeaderValue> = origins
+        .iter()
+        .filter_map(|origin| origin.parse().ok())
+        .collect();
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(values))
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::CONTENT_TYPE,
+            HeaderName::from_static("x-requested-with"),
+        ])
+}
+
+fn build_app(state: Arc<AppState>, cors_origins: &[String]) -> Router {
+    let v1 = Router::new()
         .route("/v1/accounts", post(create_account))
         .route("/v1/me", get(me))
         .route("/v1/keys", get(list_keys).post(create_key))
         .route("/v1/runs", get(list_runs).post(create_run))
         .route("/v1/runs/{id}", get(get_run))
         .route("/v1/runs/{id}/kill", post(kill_run))
-        .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            rate_limit_middleware,
+        ));
 
-    tracing::info!(%args.listen, db = %args.db.display(), "listening");
-    let listener = tokio::net::TcpListener::bind(args.listen).await?;
-    axum::serve(listener, app).await?;
-    Ok(())
+    Router::new()
+        .route("/healthz", get(|| async { "ok" }))
+        .merge(v1)
+        .layer(cors_layer(cors_origins))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state)
+}
+
+async fn rate_limit_middleware(
+    State(state): State<Arc<AppState>>,
+    request: Request<Body>,
+    next: Next,
+) -> Result<Response, ApiError> {
+    let key = rate_limit_key(request.headers());
+    if !state.limiter.check(&key).await {
+        return Err(ApiError {
+            status: StatusCode::TOO_MANY_REQUESTS,
+            message: "rate limit exceeded".into(),
+        });
+    }
+    Ok(next.run(request).await)
+}
+
+fn rate_limit_key(headers: &HeaderMap) -> String {
+    headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| format!("auth:{}", &s[..s.len().min(48)]))
+        .unwrap_or_else(|| "anon".into())
 }
 
 #[derive(Deserialize)]
@@ -175,16 +294,26 @@ struct CreateRun {
     net: Vec<String>,
     #[serde(default)]
     env: Vec<String>,
+    /// When false, return the run id immediately and finish in the background
+    /// so `POST /v1/runs/{id}/kill` can fire while the guest is live.
+    #[serde(default = "default_wait")]
+    wait: bool,
 }
 
 fn default_entry() -> String {
     "_start".into()
 }
 
+fn default_wait() -> bool {
+    true
+}
+
 #[derive(Serialize)]
 struct CreateRunResponse {
     id: String,
-    report: Report,
+    status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    report: Option<Report>,
 }
 
 async fn create_run(
@@ -243,6 +372,8 @@ async fn create_run(
         guard.insert(id.clone(), kill.clone());
     }
 
+    state.db.insert_run(&id, &account.id, "running", 0, 0, "{}")?;
+
     let engine = state.engine.clone();
     let request = RunRequest {
         wasm,
@@ -251,27 +382,124 @@ async fn create_run(
         grants,
         args: Vec::new(),
     };
-    let report = tokio::task::spawn_blocking(move || engine.execute_with(request, &kill))
-        .await
-        .map_err(|err| ApiError::internal(err.to_string()))?
-        .map_err(|err| ApiError::bad(err.to_string()))?;
 
-    {
-        let mut guard = state.inflight.lock().await;
-        guard.remove(&id);
+    if body.wait {
+        let outcome = tokio::task::spawn_blocking(move || engine.execute_with(request, &kill)).await;
+        {
+            let mut guard = state.inflight.lock().await;
+            guard.remove(&id);
+        }
+        let report = match outcome {
+            Ok(Ok(report)) => report,
+            Ok(Err(err)) => {
+                let message = err.to_string();
+                let payload = serde_json::json!({
+                    "schema_version": 1,
+                    "status": { "kind": "rejected", "message": message }
+                });
+                let _ = state.db.update_run(
+                    &id,
+                    &account.id,
+                    "rejected",
+                    0,
+                    0,
+                    &payload.to_string(),
+                );
+                return Err(ApiError::bad(err.to_string()));
+            }
+            Err(err) => {
+                let message = err.to_string();
+                let payload = serde_json::json!({
+                    "schema_version": 1,
+                    "status": { "kind": "rejected", "message": message }
+                });
+                let _ = state.db.update_run(
+                    &id,
+                    &account.id,
+                    "rejected",
+                    0,
+                    0,
+                    &payload.to_string(),
+                );
+                return Err(ApiError::internal(message));
+            }
+        };
+
+        let status = status_kind(&report.status);
+        state.db.update_run(
+            &id,
+            &account.id,
+            status,
+            report.duration_ms,
+            report.fuel_used,
+            &serde_json::to_string(&report).unwrap_or_else(|_| "{}".into()),
+        )?;
+
+        Ok(Json(CreateRunResponse {
+            id,
+            status: status.to_string(),
+            report: Some(report),
+        }))
+    } else {
+        let state_bg = state.clone();
+        let account_id = account.id.clone();
+        let run_id = id.clone();
+        tokio::spawn(async move {
+            let report = tokio::task::spawn_blocking(move || engine.execute_with(request, &kill))
+                .await;
+            {
+                let mut guard = state_bg.inflight.lock().await;
+                guard.remove(&run_id);
+            }
+            match report {
+                Ok(Ok(report)) => {
+                    let status = status_kind(&report.status);
+                    let _ = state_bg.db.update_run(
+                        &run_id,
+                        &account_id,
+                        status,
+                        report.duration_ms,
+                        report.fuel_used,
+                        &serde_json::to_string(&report).unwrap_or_else(|_| "{}".into()),
+                    );
+                }
+                Ok(Err(err)) => {
+                    let payload = serde_json::json!({
+                        "schema_version": 1,
+                        "status": { "kind": "rejected", "message": err.to_string() }
+                    });
+                    let _ = state_bg.db.update_run(
+                        &run_id,
+                        &account_id,
+                        "rejected",
+                        0,
+                        0,
+                        &payload.to_string(),
+                    );
+                }
+                Err(err) => {
+                    let payload = serde_json::json!({
+                        "schema_version": 1,
+                        "status": { "kind": "rejected", "message": err.to_string() }
+                    });
+                    let _ = state_bg.db.update_run(
+                        &run_id,
+                        &account_id,
+                        "rejected",
+                        0,
+                        0,
+                        &payload.to_string(),
+                    );
+                }
+            }
+        });
+
+        Ok(Json(CreateRunResponse {
+            id,
+            status: "running".into(),
+            report: None,
+        }))
     }
-
-    let status = status_kind(&report.status);
-    state.db.insert_run(
-        &id,
-        &account.id,
-        status,
-        report.duration_ms,
-        report.fuel_used,
-        &serde_json::to_string(&report).unwrap_or_else(|_| "{}".into()),
-    )?;
-
-    Ok(Json(CreateRunResponse { id, report }))
 }
 
 #[derive(Serialize)]
@@ -415,8 +643,115 @@ impl From<String> for ApiError {
     }
 }
 
-impl axum::response::IntoResponse for ApiError {
-    fn into_response(self) -> axum::response::Response {
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
         (self.status, self.message).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::Request;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    fn test_state(limit: u32) -> Arc<AppState> {
+        let dir = std::env::temp_dir().join(format!(
+            "boxwren-server-test-{}-{}",
+            std::process::id(),
+            Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = Db::open(&dir.join("test.sqlite")).unwrap();
+        Arc::new(AppState {
+            db,
+            engine: boxwren::Engine::new().unwrap(),
+            inflight: Mutex::new(HashMap::new()),
+            keywarden_url: None,
+            limiter: RateLimiter::new(limit, Duration::from_secs(60)),
+        })
+    }
+
+    async fn body_string(res: Response) -> String {
+        let bytes = res.into_body().collect().await.unwrap().to_bytes();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn healthz_ok() {
+        let app = build_app(test_state(100), &parse_cors_origins(None));
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .uri("/healthz")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(body_string(res).await, "ok");
+    }
+
+    #[tokio::test]
+    async fn rate_limit_blocks_burst_on_v1() {
+        let state = test_state(2);
+        let app = build_app(state, &parse_cors_origins(None));
+
+        for i in 0..2 {
+            let res = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/v1/accounts")
+                        .header("content-type", "application/json")
+                        .body(Body::from(format!(r#"{{"email":"u{i}@example.com"}}"#)))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK, "request {i}");
+        }
+
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/accounts")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"email":"blocked@example.com"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert!(body_string(res).await.contains("rate limit"));
+    }
+
+    #[tokio::test]
+    async fn cors_reflects_allowlisted_origin() {
+        let origins = parse_cors_origins(Some("http://localhost:3000"));
+        let app = build_app(test_state(100), &origins);
+        let res = app
+            .oneshot(
+                Request::builder()
+                    .method("OPTIONS")
+                    .uri("/v1/me")
+                    .header("origin", "http://localhost:3000")
+                    .header("access-control-request-method", "GET")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let allow = res
+            .headers()
+            .get("access-control-allow-origin")
+            .and_then(|v| v.to_str().ok());
+        assert_eq!(allow, Some("http://localhost:3000"));
     }
 }

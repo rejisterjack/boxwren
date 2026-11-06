@@ -42,5 +42,24 @@ this crate:
 | `stdout` / `stderr` | Redact then store |
 | `fuel_used` / `duration_ms` | Resource regression |
 
-Hosted runs store `report_json` per row; export that blob into Undoom’s store
-API or write it to `.undoom` from the agent process after `execute`.
+### Export helper
+
+`boxwren export-undoom` wraps a Boxwren report as an Undoom schema v1 run
+document: one `boxwren.execute` tool step whose `result` is the report, plus
+`metadata.report_json` for store APIs that want the raw blob.
+
+```bash
+boxwren run guest.wasm --report json > report.json
+boxwren export-undoom report.json -o .undoom/from-boxwren.json
+# or print to stdout
+boxwren export-undoom report.json
+```
+
+Hosted runs store `report_json` per row. Pull that column and pass it through
+the same command, or POST the Undoom document into Undoom’s store API.
+
+```bash
+# After GET /v1/runs/{id} → body.report
+jq '.report' run.json > report.json
+boxwren export-undoom report.json -o .undoom/hosted-run.json
+```

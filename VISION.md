@@ -37,17 +37,18 @@ Agents increasingly write and execute code on developer machines and servers. On
 
 ## How it runs
 
-- **Local-first:** no Boxwren cloud required; execution stays where the agent runs
-- Published as a Rust crate and release binaries—not a hosted execution SaaS
-- Optional demo environments may use synthetic workloads only
+- **Local-first:** embed the library or CLI; no account required; execution stays where the agent runs
+- **Optional hosted:** `boxwren-server` exposes accounts, API keys, and runs over HTTP; `web/app/dashboard` is a thin operator UI. Same Wasmtime sandbox — not a VM. See [docs/HOSTED.md](docs/HOSTED.md)
+- Published as a Rust crate, release binaries, and an optional self-hosted API
 
 ## Tech stack
 
 - Rust (runtime core)
 - Wasmtime (WebAssembly engine with resource limiting)
 - CLI in Rust; language bindings for common agent ecosystems
-- Docker optional for demo and CI reproducibility
-- Terminal or minimal UI for execution reports
+- Optional Axum HTTP API (`boxwren-server`) and Next.js dashboard (`web/`)
+- Docker optional for demo, CI, and hosted deploy
+- Terminal or dashboard UI for execution reports
 
 ## Success criteria
 
@@ -58,7 +59,7 @@ Agents increasingly write and execute code on developer machines and servers. On
 
 ## Limitations & non-goals
 
-- Sandboxing is hard; vendors like E2B exist—Boxwren stays **lightweight and embeddable**, not a cloud sandbox platform
+- Sandboxing is hard; vendors like E2B exist—Boxwren stays **lightweight and embeddable**; hosted mode is the same SFI, not Firecracker
 - **No perfect security claim**—document what WASM + capabilities protect against and what they do not
 - Not a replacement for Keywarden policy on which tools an agent may call
 
@@ -68,8 +69,10 @@ Agents increasingly write and execute code on developer machines and servers. On
 |----------|---------|
 | Library | [crates.io](https://crates.io) (`boxwren`) |
 | Binaries | GitHub releases |
+| Hosted API | Self-host `boxwren-server` ([docs/HOSTED.md](docs/HOSTED.md)) |
+| Dashboard | `web/app/dashboard` against your API |
 
-Hosted execution is optional future work, not required for v1.
+Hosted execution is optional. Local embed remains the primary path.
 
 ## Related projects
 

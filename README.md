@@ -2,7 +2,9 @@
 
 Local-first sandbox for untrusted WebAssembly. Boxwren runs a WASI module inside Wasmtime with deny-by-default fuel, memory, wall-clock, filesystem, network, and environment limits, a per-run kill switch, and a stable execution report.
 
-Boxwren contains execution. [Keywarden](https://github.com/rejisterjack/keywarden) decides whether a tool may be called. [Undoom](https://github.com/rejisterjack/undoom) records and replays failures. There is no Boxwren cloud, account system, or dashboard.
+Boxwren contains execution. [Keywarden](https://github.com/rejisterjack/keywarden) decides whether a tool may be called. [Undoom](https://github.com/rejisterjack/undoom) records and replays failures.
+
+**Local-first is the default.** Embed the crate or CLI where the agent already runs. An optional hosted stack — `boxwren-server` accounts/API keys/runs, plus the Next.js dashboard under `web/app/dashboard` — is documented in [docs/HOSTED.md](docs/HOSTED.md) and described by [docs/openapi.yaml](docs/openapi.yaml).
 
 The guest is WebAssembly, not source. Agent frameworks compile or supply a module. A bundled Python or JavaScript interpreter is not part of this runtime.
 
@@ -57,6 +59,8 @@ boxwren run guest.wasm --allow-dir ./data:/data:ro --allow-net 127.0.0.1:9 --all
 boxwren run guest.wasm --allow-net example.com:443
 boxwren run guest.wasm --fuel 1000000 --memory 16MiB --timeout 500ms
 boxwren demo
+boxwren run guest.wasm --report json > report.json
+boxwren export-undoom report.json -o .undoom/from-boxwren.json
 ```
 
 `--allow-dir` is `host:guest`, `host:guest:ro`, or `host:guest:rw`. The split is the last colon. The default mode is read-only. `--allow-net` is an IP, `ip:port`, hostname, or `hostname:port`. Hostname grants turn on WASI name lookup for that run. `--allow-env NAME` copies a host variable, and `NAME=VALUE` sets one explicitly. A missing directory or an unknown variable fails before the guest starts.
@@ -102,6 +106,16 @@ PYTHONPATH=. python3 -c 'import boxwren_py; print(boxwren_py.Engine())'
 ```
 
 Go (`go get github.com/rejisterjack/boxwren/bindings/go`): the package wraps the C ABI in `crates/boxwren-ffi`, not a second sandbox. `cargo build -p boxwren-ffi --release`, then `go test` in `bindings/go`. Grants use the same strings as the CLI. `Engine.KillHandle()` and `ExecuteWith(wasm, request, kill)` stop one run from any goroutine.
+
+## Hosted (optional)
+
+Run the multi-tenant HTTP API locally:
+
+```bash
+cargo run -p boxwren-server -- --listen 127.0.0.1:8787 --db /tmp/boxwren.sqlite
+```
+
+Point the dashboard at it (`NEXT_PUBLIC_BOXWREN_API_URL`) from `web/`. Full deploy notes, CORS allowlist, and Keywarden admission: [docs/HOSTED.md](docs/HOSTED.md). OpenAPI stub: [docs/openapi.yaml](docs/openapi.yaml).
 
 ## Releasing
 

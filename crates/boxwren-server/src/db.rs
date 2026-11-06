@@ -185,6 +185,36 @@ impl Db {
         Ok(())
     }
 
+    pub fn update_run(
+        &self,
+        id: &str,
+        account_id: &str,
+        status: &str,
+        duration_ms: u64,
+        fuel_used: u64,
+        report_json: &str,
+    ) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|err| err.to_string())?;
+        let n = conn
+            .execute(
+                "UPDATE runs SET status = ?1, duration_ms = ?2, fuel_used = ?3, report_json = ?4
+                 WHERE id = ?5 AND account_id = ?6",
+                params![
+                    status,
+                    duration_ms as i64,
+                    fuel_used as i64,
+                    report_json,
+                    id,
+                    account_id
+                ],
+            )
+            .map_err(|err| err.to_string())?;
+        if n == 0 {
+            return Err("run not found".into());
+        }
+        Ok(())
+    }
+
     pub fn list_runs(&self, account_id: &str) -> Result<Vec<RunRow>, String> {
         let conn = self.conn.lock().map_err(|err| err.to_string())?;
         let mut stmt = conn
