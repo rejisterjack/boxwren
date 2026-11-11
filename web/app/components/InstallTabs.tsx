@@ -2,16 +2,50 @@
 
 import { useState } from "react";
 
-export default function InstallTabs() {
-  const [activeTab, setActiveTab] = useState<"rust" | "python" | "cli" | "go">("rust");
-  const [copiedCmd, setCopiedCmd] = useState(false);
-  const [copiedSnippet, setCopiedSnippet] = useState(false);
+type TabId = "python" | "rust" | "frameworks" | "cli" | "go";
 
-  const snippets = {
+export default function InstallTabs() {
+  const [activeTab, setActiveTab] = useState<TabId>("python");
+  const [copiedCmd, setCopiedCmd] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const tabs: Record<
+    TabId,
+    {
+      label: string;
+      cmd: string;
+      badge: string;
+      fileTitle: string;
+      example: string;
+      docsUrl: string;
+      docsLabel: string;
+    }
+  > = {
+    python: {
+      label: "Python (pip)",
+      cmd: "pip install boxwren-py",
+      badge: "PyPI Wheels (3.12 & 3.13)",
+      fileTitle: "agent_sandbox.py",
+      example: `import boxwren
+
+# Execute untrusted agent-generated code with strict fuel caps
+report = boxwren.run(
+    guest_wasm_bytes,
+    entry="run",
+    fuel=1_000_000,
+    max_memory_mb=64
+)
+
+print(f"Status: {report['status']}")
+if report["status"] == "permission_denied":
+    print(f"Trapped attempt: {report['violation_attempted']}")`,
+      docsUrl: "https://pypi.org/project/boxwren-py/",
+      docsLabel: "PyPI Package Details ↗",
+    },
     rust: {
       label: "Rust (Cargo)",
       cmd: "cargo add boxwren",
-      badge: "crates.io",
+      badge: "crates.io v0.2.3",
       fileTitle: "main.rs",
       example: `use boxwren::{Engine, Limits, Grants};
 
@@ -19,34 +53,42 @@ let engine = Engine::new()?;
 let mut limits = Limits::default();
 limits.fuel = Some(1_000_000);
 
+// Execute in-process at 1 µs overhead
 let report = engine.execute(&wasm_bytes, "run", &limits, &Grants::default())?;
-println!("Status: {:?}", report.status);`,
+println!("Execution Status: {:?}", report.status);`,
+      docsUrl: "https://docs.rs/boxwren",
+      docsLabel: "docs.rs API Reference ↗",
     },
-    python: {
-      label: "Python (pip)",
-      cmd: "pip install boxwren-py",
-      badge: "PyPI 3.12 / 3.13",
-      fileTitle: "agent.py",
-      example: `import boxwren
+    frameworks: {
+      label: "LangChain & CrewAI",
+      cmd: "pip install boxwren-py langchain-core",
+      badge: "Drop-in Tool Sandbox",
+      fileTitle: "langchain_tool.py",
+      example: `from langchain.tools import tool
+import boxwren
 
-# Run untrusted guest code with fuel cap
-report = boxwren.run(
-    guest_wasm_bytes,
-    entry="run",
-    fuel=1_000_000
-)
-print(f"Status: {report['status']}")`,
+@tool
+def execute_agent_code(code_bytes: bytes) -> str:
+    """Safely executes untrusted Python/WASM code inside Boxwren sandbox."""
+    report = boxwren.run(code_bytes, entry="run", fuel=2_000_000)
+    if report["status"] != "success":
+        return f"Execution blocked: {report['status']}"
+    return f"Execution success: {report.get('output', '')}"`,
+      docsUrl: "https://github.com/rejisterjack/boxwren/blob/main/docs/INTEGRATIONS.md",
+      docsLabel: "Framework Integration Guide ↗",
     },
     cli: {
       label: "CLI (Binary)",
       cmd: "curl -fsSL https://boxwren.rejisterjack.com/install.sh | sh",
-      badge: "Darwin / Linux",
+      badge: "Standalone Binary",
       fileTitle: "terminal",
       example: `# Execute standalone guest with fuel limit and JSON telemetry
 boxwren run untrusted_guest.wat \\
   --entry run \\
   --fuel 1000000 \\
   --report json`,
+      docsUrl: "https://github.com/rejisterjack/boxwren/releases",
+      docsLabel: "GitHub Release Binaries ↗",
     },
     go: {
       label: "Go (C ABI)",
@@ -56,12 +98,18 @@ boxwren run untrusted_guest.wat \\
       example: `import "github.com/rejisterjack/boxwren/bindings/go"
 
 engine, err := boxwren.NewEngine()
+if err != nil {
+    panic(err)
+}
+
 report, err := engine.Run(wasmBytes, "run", boxwren.DefaultLimits())
-fmt.Printf("Status: %s\\n", report.Status)`,
+fmt.Printf("Execution Status: %s\\n", report.Status)`,
+      docsUrl: "https://github.com/rejisterjack/boxwren/tree/main/bindings/go",
+      docsLabel: "Go C-ABI Headers ↗",
     },
   };
 
-  const current = snippets[activeTab];
+  const current = tabs[activeTab];
 
   const handleCopyCmd = () => {
     navigator.clipboard.writeText(current.cmd);
@@ -69,68 +117,72 @@ fmt.Printf("Status: %s\\n", report.Status)`,
     setTimeout(() => setCopiedCmd(false), 2000);
   };
 
-  const handleCopySnippet = () => {
+  const handleCopyCode = () => {
     navigator.clipboard.writeText(current.example);
-    setCopiedSnippet(true);
-    setTimeout(() => setCopiedSnippet(false), 2000);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   return (
-    <div className="install-tabs-widget" aria-label="Installation and Quickstart Codes">
-      <div className="install-tabs-nav" role="tablist" aria-label="Installation Methods">
-        {(Object.keys(snippets) as Array<keyof typeof snippets>).map((key) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={activeTab === key}
-            onClick={() => {
-              setActiveTab(key);
-              setCopiedCmd(false);
-              setCopiedSnippet(false);
-            }}
-            className={`install-tab-btn ${activeTab === key ? "active" : ""}`}
-          >
-            {snippets[key].label}
-          </button>
-        ))}
+    <div className="install-tabs-card" aria-label="Rapid Polyglot Onboarding Installation">
+      {/* Ecosystem Tabs */}
+      <div className="install-tab-nav" role="tablist" aria-label="Ecosystem Choices">
+        {(Object.keys(tabs) as TabId[]).map((key) => {
+          const tab = tabs[key];
+          const isSelected = activeTab === key;
+          return (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={isSelected}
+              className={`install-tab-btn ${isSelected ? "active" : ""}`}
+              onClick={() => setActiveTab(key)}
+            >
+              <span className="tab-label">{tab.label}</span>
+              <span className="tab-badge">{tab.badge}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main Terminal Command Box */}
-      <div className="install-tab-content">
-        <div className="cmd-line-group">
-          <span className="terminal-prompt" aria-hidden="true">$</span>
-          <code className="install-cmd">{current.cmd}</code>
-        </div>
-        <div className="install-actions">
-          <span className="install-badge">{current.badge}</span>
-          <button
-            type="button"
-            onClick={handleCopyCmd}
-            className="btn-copy"
-            aria-label={`Copy command: ${current.cmd}`}
-          >
-            {copiedCmd ? "Copied ✓" : "Copy Command"}
-          </button>
-        </div>
+      {/* Terminal Command Bar */}
+      <div className="install-cmd-bar">
+        <span className="terminal-prompt-char" aria-hidden="true">$</span>
+        <code className="install-cmd-text">{current.cmd}</code>
+        <button
+          type="button"
+          className="copy-btn"
+          onClick={handleCopyCmd}
+          aria-label="Copy installation command"
+        >
+          {copiedCmd ? "Copied!" : "Copy"}
+        </button>
       </div>
 
-      {/* Code Snippet Preview */}
-      <div className="install-snippet-wrap">
-        <div className="snippet-header">
-          <span className="snippet-filename">{current.fileTitle}</span>
-          <div className="snippet-header-actions">
-            <span className="snippet-quickstart-label">Three-Line Embed</span>
+      {/* Code Snippet Enclave */}
+      <div className="install-code-enclave">
+        <div className="code-enclave-header">
+          <span className="enclave-filename">{current.fileTitle}</span>
+          <div className="enclave-actions">
+            <a
+              href={current.docsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="enclave-docs-link"
+            >
+              {current.docsLabel}
+            </a>
             <button
               type="button"
-              onClick={handleCopySnippet}
-              className="btn-copy-snippet"
-              aria-label={`Copy ${current.fileTitle} code snippet`}
+              className="copy-btn copy-btn-sm"
+              onClick={handleCopyCode}
+              aria-label="Copy code example"
             >
-              {copiedSnippet ? "Copied ✓" : "Copy Code"}
+              {copiedCode ? "Copied Snippet!" : "Copy Code"}
             </button>
           </div>
         </div>
-        <pre className="snippet-code">
+        <pre className="install-code-block" tabIndex={0} aria-label={`${current.label} integration code`}>
           <code>{current.example}</code>
         </pre>
       </div>

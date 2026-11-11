@@ -1,166 +1,169 @@
 "use client";
 
+import { useState } from "react";
+
 export default function ThreatModelMatrix() {
+  const [filter, setFilter] = useState<"all" | "enforced" | "nongoal">("all");
+
   const guarantees = [
     {
       domain: "Host Address Space",
-      threat: "Arbitrary memory reads/writes to host process",
-      guarantee: "Strictly Isolated. Linear memory confined inside Wasmtime instance.",
+      threat: "Arbitrary memory read/write to calling host process",
+      guarantee: "Strict Software Fault Isolation. Linear memory bounds enforced by Wasmtime instance.",
       status: "enforced",
+      classification: "Enforced Boundary",
+      details: "Guest pointer arithmetic cannot address memory outside its allocated WebAssembly page block.",
     },
     {
       domain: "Filesystem Access",
-      threat: "Reading secrets (`~/.ssh`, `.env`) or overwriting system files",
-      guarantee: "Deny-by-default. Path traversal (`..`) blocked at preopen boundary via cap-std.",
+      threat: "Reading secrets (~/.ssh, .env) or wiping local project folders",
+      guarantee: "Deny-by-default. Path traversal (../../) strictly blocked at preopen boundary via cap-std.",
       status: "enforced",
+      classification: "Enforced Boundary",
+      details: "Unless a directory is explicitly preopened with a capability grant, syscalls trap with ENOTCAPABLE.",
     },
     {
       domain: "Socket Egress",
-      threat: "Data exfiltration, botnet beacons, port scanning",
-      guarantee: "Deny-by-default. Socket checks run pre-syscall. Hostname DNS disabled unless granted.",
+      threat: "Data exfiltration, botnet beaconing, LAN port scanning",
+      guarantee: "Deny-by-default. Socket operations trap pre-syscall. Outbound DNS resolution disabled.",
       status: "enforced",
+      classification: "Enforced Boundary",
+      details: "Raw sockets require explicit NetGrant. Zero DNS packets or outbound TCP handshakes leave the host.",
     },
     {
       domain: "Host CPU & RAM",
-      threat: "Infinite CPU loops, memory bombs (`memory.grow`), stdio flood",
-      guarantee: "Strict caps. Fuel instruction metering, memory limiters, and epoch wall deadlines.",
+      threat: "Infinite loops, memory allocation bombs (memory.grow), stdio flooding",
+      guarantee: "Strict instruction metering. Fuel counter limits instructions; memory limiters cap peak RAM.",
       status: "enforced",
+      classification: "Enforced Boundary",
+      details: "CPU burn triggers epoch interrupt; memory requests exceeding limits return -1 safely to guest.",
     },
     {
       domain: "Runaway Threads",
-      threat: "Agent generation locks calling thread",
-      guarantee: "Instant kill switch. `KillHandle::kill()` halts execution from another thread.",
+      threat: "Host process hangs when rogue agent script locks calling thread",
+      guarantee: "Instant kill switch. Asynchronous KillHandle::kill() halts guest execution from another thread.",
       status: "enforced",
+      classification: "Enforced Boundary",
+      details: "Host thread regains control in microseconds without crashing the host process or disturbing peers.",
     },
     {
       domain: "Microarchitectural Leaks",
-      threat: "Spectre-class hardware side channels",
-      guarantee: "Non-goal. SFI is software fault isolation, not constant-time hardware virtualization.",
-      status: "non-goal",
+      threat: "Spectre-class and Meltdown hardware timing side channels",
+      guarantee: "Explicit Non-Goal. Software Fault Isolation is not constant-time hardware virtualization.",
+      status: "nongoal",
+      classification: "Explicit Non-Goal",
+      details: "Use separate hardware nodes or dedicated cloud instances if defending against speculative execution attacks.",
     },
     {
-      domain: "Multi-Tenant Cloud",
-      threat: "Hostile multi-tenant kernel exploitation",
-      guarantee: "Non-goal. Use an outer hypervisor (Firecracker/VM) for multi-tenant cloud defense.",
-      status: "non-goal",
+      domain: "Multi-Tenant Cloud VM",
+      threat: "Hostile multi-tenant kernel exploitation across untrusted accounts",
+      guarantee: "Explicit Non-Goal. Software Fault Isolation provides in-process speed; use an outer hypervisor for cloud hosting.",
+      status: "nongoal",
+      classification: "Explicit Non-Goal",
+      details: "For multi-tenant SaaS hosting, pair Boxwren with Firecracker MicroVMs or Fly Machines as an outer envelope.",
     },
   ];
 
+  const filteredItems = guarantees.filter((item) => {
+    if (filter === "enforced") return item.status === "enforced";
+    if (filter === "nongoal") return item.status === "nongoal";
+    return true;
+  });
+
   return (
-    <div className="threat-matrix-card" aria-label="Security Threat Model and Non Goals">
+    <div className="threat-matrix-card" aria-label="Security Threat Model and Boundaries">
       <div className="threat-matrix-header">
         <div>
-          <span className="badge-kicker">Transparent Engineering</span>
+          <span className="badge-kicker">Honest Security Engineering</span>
           <h2 className="section-title">Threat Model &amp; Non-Goals</h2>
           <p className="section-lead">
-            We reject security theater. Software Fault Isolation delivers extreme speed and safety for in-process workloads without claiming to be a multi-tenant hypervisor.
+            We reject security theater. Software Fault Isolation provides unmatched speed and containment for in-process workloads without dishonestly pretending to be a multi-tenant hardware hypervisor.
           </p>
+        </div>
+
+        {/* Filter Pills */}
+        <div className="threat-filter-group" role="tablist" aria-label="Threat Matrix Filter">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === "all"}
+            className={`filter-btn ${filter === "all" ? "active" : ""}`}
+            onClick={() => setFilter("all")}
+          >
+            All Vectors ({guarantees.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === "enforced"}
+            className={`filter-btn ${filter === "enforced" ? "active" : ""}`}
+            onClick={() => setFilter("enforced")}
+          >
+            Enforced Boundaries (5)
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === "nongoal"}
+            className={`filter-btn ${filter === "nongoal" ? "active" : ""}`}
+            onClick={() => setFilter("nongoal")}
+          >
+            Explicit Non-Goals (2)
+          </button>
         </div>
       </div>
 
-      {/* Desktop Table View */}
+      {/* Semantic Responsive Data Table conforming to modern-web-guidance */}
       <div
-        className="threat-table-wrap desktop-table"
-        role="region"
+        className="threat-table-wrapper"
         tabIndex={0}
-        aria-label="Threat Model and Security Boundaries Table"
+        role="region"
+        aria-label="Threat Model and Security Boundaries Data Table"
       >
         <table className="threat-table">
-          <caption className="sr-only">Detailed breakdown of Boxwren threat vectors, enforcement guarantees, and non-goals</caption>
+          <caption className="sr-only">
+            Detailed breakdown of Boxwren attack vectors, threat descriptions, enforcement guarantees, and non-goals
+          </caption>
           <thead>
             <tr>
               <th scope="col">Attack Domain</th>
               <th scope="col">Threat Vector</th>
-              <th scope="col">Boxwren Enforcement</th>
+              <th scope="col">Boxwren Enforcement &amp; Guarantee</th>
               <th scope="col" className="th-right">Classification</th>
             </tr>
           </thead>
           <tbody>
-            {guarantees.map((item, idx) => (
-              <tr key={idx} className={item.status === "enforced" ? "row-enforced" : "row-nongoal"}>
-                <td className="threat-domain">{item.domain}</td>
-                <td className="threat-threat">{item.threat}</td>
-                <td className="threat-guarantee">{item.guarantee}</td>
-                <td className="td-right">
+            {filteredItems.map((item, idx) => (
+              <tr
+                key={idx}
+                className={item.status === "enforced" ? "row-enforced" : "row-nongoal"}
+              >
+                <th scope="row" data-label="Attack Domain">
+                  <div className="domain-cell">
+                    <span className="domain-name">{item.domain}</span>
+                    <span className="domain-detail">{item.details}</span>
+                  </div>
+                </th>
+                <td data-label="Threat Vector" className="threat-cell">
+                  {item.threat}
+                </td>
+                <td data-label="Boxwren Guarantee" className="guarantee-cell">
+                  <span className="guarantee-text">{item.guarantee}</span>
+                </td>
+                <td data-label="Classification" className="status-cell">
                   <span
-                    className={`status-pill ${
-                      item.status === "enforced" ? "status-enforced" : "status-nongoal"
+                    className={`status-badge ${
+                      item.status === "enforced" ? "badge-enforced" : "badge-nongoal"
                     }`}
                   >
-                    {item.status === "enforced" ? "Enforced by SFI" : "Non-Goal (By Design)"}
+                    <span className="status-dot" aria-hidden="true" />
+                    {item.classification}
                   </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Mobile Card-Based Responsive View (< 768px) */}
-      <div className="threat-mobile-cards" role="list" aria-label="Threat Model Security Cards">
-        {guarantees.map((item, idx) => (
-          <div
-            key={idx}
-            className={`threat-card ${item.status === "enforced" ? "card-enforced" : "card-nongoal"}`}
-            role="listitem"
-          >
-            <div className="threat-card-top">
-              <span className="threat-card-domain">{item.domain}</span>
-              <span
-                className={`status-pill ${
-                  item.status === "enforced" ? "status-enforced" : "status-nongoal"
-                }`}
-              >
-                {item.status === "enforced" ? "Enforced by SFI" : "Non-Goal (By Design)"}
-              </span>
-            </div>
-            <div className="threat-card-body">
-              <div className="threat-card-row">
-                <span className="threat-card-label">Threat Vector</span>
-                <span className="threat-card-val text-secondary">{item.threat}</span>
-              </div>
-              <div className="threat-card-row">
-                <span className="threat-card-label">Enforcement Guarantee</span>
-                <span className="threat-card-val text-accent font-mono">{item.guarantee}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="threat-matrix-footer">
-        <span className="footer-doc-note">
-          Detailed architectural specifications and security boundaries are documented in tree:
-        </span>
-        <div className="threat-links">
-          <a
-            href="https://github.com/rejisterjack/boxwren/blob/main/docs/THREAT_MODEL.md"
-            target="_blank"
-            rel="noreferrer"
-            className="threat-doc-badge"
-            aria-label="Read THREAT_MODEL.md documentation on GitHub"
-          >
-            THREAT_MODEL.md ↗
-          </a>
-          <a
-            href="https://github.com/rejisterjack/boxwren/blob/main/docs/ARCHITECTURE.md"
-            target="_blank"
-            rel="noreferrer"
-            className="threat-doc-badge"
-            aria-label="Read ARCHITECTURE.md documentation on GitHub"
-          >
-            ARCHITECTURE.md ↗
-          </a>
-          <a
-            href="https://github.com/rejisterjack/boxwren/blob/main/docs/HOSTED.md"
-            target="_blank"
-            rel="noreferrer"
-            className="threat-doc-badge"
-            aria-label="Read HOSTED.md documentation on GitHub"
-          >
-            HOSTED.md ↗
-          </a>
-        </div>
       </div>
     </div>
   );

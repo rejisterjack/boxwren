@@ -75,6 +75,10 @@ impl RateLimiter {
     async fn check(&self, key: &str) -> bool {
         let mut guard = self.hits.lock().await;
         let now = Instant::now();
+        // Unique Authorization headers would otherwise stay in this map forever.
+        if guard.len() > 1024 {
+            guard.retain(|_, (start, _)| now.duration_since(*start) < self.window);
+        }
         let entry = guard.entry(key.to_string()).or_insert((now, 0));
         if now.duration_since(entry.0) >= self.window {
             *entry = (now, 0);
@@ -230,7 +234,17 @@ async fn create_account(
     State(state): State<Arc<AppState>>,
     Json(body): Json<CreateAccount>,
 ) -> Result<Json<CreateAccountResponse>, ApiError> {
-    let (account, api_key) = state.db.create_account(&body.email)?;
+    let email = body.email.trim().to_lowercase();
+    if !valid_email(&email) {
+        return Err(ApiError::bad("invalid email".into()));
+    }
+    let (account, api_key) = match state.db.create_account(&email) {
+        Ok(created) => created,
+        Err(err) if err.contains("UNIQUE") => {
+            return Err(ApiError::conflict("account already exists"));
+        }
+        Err(err) => return Err(ApiError::internal(err)),
+    };
     Ok(Json(CreateAccountResponse {
         id: account.id,
         email: account.email,
@@ -264,7 +278,11 @@ async fn create_key(
     Json(body): Json<CreateKey>,
 ) -> Result<Json<CreateKeyResponse>, ApiError> {
     let account = require_account(&state, &headers)?;
-    let (row, api_key) = state.db.create_key(&account.id, &body.name)?;
+    let name = body.name.trim();
+    if name.is_empty() || name.len() > 80 {
+        return Err(ApiError::bad("invalid key name".into()));
+    }
+    let (row, api_key) = state.db.create_key(&account.id, name)?;
     Ok(Json(CreateKeyResponse {
         id: row.id,
         name: row.name,
@@ -557,7 +575,13 @@ async fn kill_run(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-    let _account = require_account(&state, &headers)?;
+    let account = require_account(&state, &headers)?;
+    // Check ownership before the in-memory map so one account cannot stop
+    // another account's run by guessing its id. The database lock is not
+    // taken while `inflight` is held.
+    if state.db.get_run(&account.id, &id)?.is_none() {
+        return Err(ApiError::not_found("run not found"));
+    }
     let guard = state.inflight.lock().await;
     if let Some(kill) = guard.get(&id) {
         kill.kill();
@@ -567,17 +591,32 @@ async fn kill_run(
     }
 }
 
+fn valid_email(email: &str) -> bool {
+    email.len() <= 320
+        && email.contains('@')
+        && !email.starts_with('@')
+        && !email.ends_with('@')
+        && !email.contains(char::is_whitespace)
+}
+
 fn decode_wasm(body: &CreateRun) -> Result<Vec<u8>, ApiError> {
-    if let Some(b64) = &body.wasm_base64 {
+    let bytes = if let Some(b64) = &body.wasm_base64 {
         use base64::Engine as _;
-        return base64::engine::general_purpose::STANDARD
+        base64::engine::general_purpose::STANDARD
             .decode(b64)
-            .map_err(|err| ApiError::bad(format!("wasm_base64: {err}")));
+            .map_err(|err| ApiError::bad(format!("wasm_base64: {err}")))?
+    } else if let Some(text) = &body.wasm_text {
+        text.as_bytes().to_vec()
+    } else {
+        return Err(ApiError::bad("provide wasm_base64 or wasm_text".into()));
+    };
+    if bytes.is_empty() {
+        return Err(ApiError::bad("module is empty".into()));
     }
-    if let Some(text) = &body.wasm_text {
-        return Ok(text.as_bytes().to_vec());
+    if bytes.len() > Limits::default().max_module_bytes {
+        return Err(ApiError::bad("module exceeds 32 MiB".into()));
     }
-    Err(ApiError::bad("provide wasm_base64 or wasm_text".into()))
+    Ok(bytes)
 }
 
 fn status_kind(status: &Status) -> &'static str {
@@ -635,6 +674,12 @@ impl ApiError {
     fn not_found(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::NOT_FOUND,
+            message: message.into(),
+        }
+    }
+    fn conflict(message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::CONFLICT,
             message: message.into(),
         }
     }
@@ -775,5 +820,145 @@ mod tests {
             .get("access-control-allow-origin")
             .and_then(|v| v.to_str().ok());
         assert_eq!(allow, Some("http://localhost:3000"));
+    }
+
+    async fn send(
+        app: &Router,
+        method: &str,
+        uri: &str,
+        token: Option<&str>,
+        body: &str,
+    ) -> Response {
+        let mut builder = Request::builder().method(method).uri(uri);
+        if !body.is_empty() || method == "POST" {
+            builder = builder.header("content-type", "application/json");
+        }
+        if let Some(token) = token {
+            builder = builder.header("authorization", format!("Bearer {token}"));
+        }
+        app.clone()
+            .oneshot(builder.body(Body::from(body.to_string())).unwrap())
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn rejects_a_bad_email_and_a_duplicate() {
+        let app = build_app(test_state(100), &parse_cors_origins(None));
+        let bad = send(
+            &app,
+            "POST",
+            "/v1/accounts",
+            None,
+            r#"{"email":"not-an-email"}"#,
+        )
+        .await;
+        assert_eq!(bad.status(), StatusCode::BAD_REQUEST);
+
+        let created = send(
+            &app,
+            "POST",
+            "/v1/accounts",
+            None,
+            r#"{"email":" Person@Example.com "}"#,
+        )
+        .await;
+        assert_eq!(created.status(), StatusCode::OK);
+        let created: serde_json::Value = serde_json::from_str(&body_string(created).await).unwrap();
+        assert_eq!(created["email"], "person@example.com");
+
+        let again = send(
+            &app,
+            "POST",
+            "/v1/accounts",
+            None,
+            r#"{"email":"person@example.com"}"#,
+        )
+        .await;
+        assert_eq!(again.status(), StatusCode::CONFLICT);
+    }
+
+    #[tokio::test]
+    async fn run_returns_the_export_result() {
+        let app = build_app(test_state(100), &parse_cors_origins(None));
+        let key = create_account_key(&app, "runner@example.com").await;
+        let res = send(
+            &app,
+            "POST",
+            "/v1/runs",
+            Some(&key),
+            r#"{"wasm_text":"(module (func (export \"run\") (result i32) i32.const 2 i32.const 2 i32.add))","entry":"run"}"#,
+        )
+        .await;
+        let status = res.status();
+        let body: serde_json::Value = serde_json::from_str(&body_string(res).await).unwrap();
+        assert_eq!(status, StatusCode::OK, "{body}");
+        assert_eq!(body["status"], "success");
+        assert_eq!(body["report"]["return_value"], 4);
+    }
+
+    #[tokio::test]
+    async fn one_account_cannot_kill_another_accounts_run() {
+        let app = build_app(test_state(100), &parse_cors_origins(None));
+        let owner = create_account_key(&app, "owner@example.com").await;
+        let other = create_account_key(&app, "other@example.com").await;
+        let started = send(
+            &app,
+            "POST",
+            "/v1/runs",
+            Some(&owner),
+            r#"{"wasm_text":"(module (func (export \"run\") (loop br 0)))","entry":"run","wait":false,"wall_ms":2000}"#,
+        )
+        .await;
+        let status = started.status();
+        let started: serde_json::Value = serde_json::from_str(&body_string(started).await).unwrap();
+        assert_eq!(status, StatusCode::OK, "{started}");
+        let id = started["id"].as_str().unwrap();
+
+        let denied = send(
+            &app,
+            "POST",
+            &format!("/v1/runs/{id}/kill"),
+            Some(&other),
+            "",
+        )
+        .await;
+        assert_eq!(denied.status(), StatusCode::NOT_FOUND);
+
+        let allowed = send(
+            &app,
+            "POST",
+            &format!("/v1/runs/{id}/kill"),
+            Some(&owner),
+            "",
+        )
+        .await;
+        assert_eq!(allowed.status(), StatusCode::ACCEPTED);
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        loop {
+            let res = send(&app, "GET", &format!("/v1/runs/{id}"), Some(&owner), "").await;
+            let body: serde_json::Value = serde_json::from_str(&body_string(res).await).unwrap();
+            if body["status"] == "killed" {
+                break;
+            }
+            assert!(Instant::now() < deadline, "run stayed {}", body["status"]);
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    }
+
+    async fn create_account_key(app: &Router, email: &str) -> String {
+        let res = send(
+            app,
+            "POST",
+            "/v1/accounts",
+            None,
+            &format!(r#"{{"email":"{email}"}}"#),
+        )
+        .await;
+        let status = res.status();
+        let body: serde_json::Value = serde_json::from_str(&body_string(res).await).unwrap();
+        assert_eq!(status, StatusCode::OK, "{body}");
+        body["api_key"].as_str().unwrap().to_string()
     }
 }

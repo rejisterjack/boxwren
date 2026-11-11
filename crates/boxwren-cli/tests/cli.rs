@@ -86,6 +86,66 @@ fn export_entry_returns_the_i32_result() {
 }
 
 #[test]
+fn end_of_options_does_not_grant_host_environment() {
+    let module = write_module(
+        "exit.wat",
+        r#"
+        (module
+          (import "wasi_snapshot_preview1" "proc_exit" (func $exit (param i32)))
+          (memory (export "memory") 1)
+          (func (export "_start")
+            (call $exit (i32.const 0))))
+        "#,
+    );
+    let leaked = Command::new(bin())
+        .args([
+            "run",
+            module.to_str().unwrap(),
+            "--report",
+            "json",
+            "--allow-env",
+            "BOXWREN_SENTINEL",
+        ])
+        .env("BOXWREN_SENTINEL", "1")
+        .output()
+        .unwrap();
+    assert!(leaked.status.success(), "{leaked:?}");
+    let report: boxwren::Report = serde_json::from_slice(&leaked.stdout).unwrap();
+    assert!(
+        report.events.iter().any(|event| {
+            event.kind == EventKind::Env
+                && event.target == "BOXWREN_SENTINEL"
+                && event.decision == Decision::Allowed
+        }),
+        "{report:?}"
+    );
+
+    let sealed = Command::new(bin())
+        .args([
+            "run",
+            module.to_str().unwrap(),
+            "--report",
+            "json",
+            "--",
+            "--allow-env",
+            "BOXWREN_SENTINEL",
+        ])
+        .env("BOXWREN_SENTINEL", "1")
+        .output()
+        .unwrap();
+    assert!(sealed.status.success(), "{sealed:?}");
+    let report: boxwren::Report = serde_json::from_slice(&sealed.stdout).unwrap();
+    assert!(
+        report
+            .events
+            .iter()
+            .all(|event| event.kind != EventKind::Env),
+        "{report:?}"
+    );
+    assert_eq!(report.exit_code, Some(0));
+}
+
+#[test]
 fn invalid_grant_fails_before_the_module_runs() {
     let module = write_module("(module)", "(module)");
     let output = Command::new(bin())

@@ -32,6 +32,7 @@ function formatDate(isoOrString: string): string {
 
 export default function DashboardPage() {
   const [token, setToken] = useState("");
+  const [draftKey, setDraftKey] = useState("");
   const [email, setEmail] = useState("you@example.com");
   const [account, setAccount] = useState<Account | null>(null);
   const [keys, setKeys] = useState<ApiKey[]>([]);
@@ -92,6 +93,14 @@ export default function DashboardPage() {
       void refresh();
     }
   }, [token, refresh]);
+
+  function useExistingKey(event: FormEvent) {
+    event.preventDefault();
+    const next = draftKey.trim();
+    if (!next) return;
+    setError("");
+    setToken(next);
+  }
 
   async function signup(event: FormEvent) {
     event.preventDefault();
@@ -190,7 +199,7 @@ export default function DashboardPage() {
       ) : null}
 
       {!token ? (
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <form className="panel" onSubmit={signup} style={{ maxWidth: 440, width: "100%" }}>
             <h3>Authenticate with Enclave</h3>
             <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1.25rem" }}>
@@ -213,33 +222,22 @@ export default function DashboardPage() {
               Create Account &amp; Key
             </button>
 
-            <div style={{ margin: "1.5rem 0 1rem", borderTop: "1px solid var(--border-subtle)", position: "relative" }}>
-              <span
-                style={{
-                  position: "absolute",
-                  top: "-0.65rem",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  background: "var(--surface-base)",
-                  padding: "0 0.5rem",
-                  fontSize: "0.75rem",
-                  color: "var(--text-secondary)",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                OR
-              </span>
-            </div>
-
+          </form>
+          <form className="panel" onSubmit={useExistingKey} style={{ maxWidth: 440, width: "100%", marginTop: "1rem" }}>
             <div className="form-row">
               <label htmlFor="token">Existing API Key</label>
               <input
                 id="token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="bw_live_..."
+                value={draftKey}
+                onChange={(e) => setDraftKey(e.target.value)}
+                placeholder="bw_…"
+                autoComplete="off"
+                spellCheck={false}
               />
             </div>
+            <button className="btn btn-secondary" type="submit" style={{ width: "100%" }}>
+              Use existing key
+            </button>
           </form>
         </div>
       ) : (
@@ -263,9 +261,14 @@ export default function DashboardPage() {
                   onClick={() => {
                     window.localStorage.removeItem("boxwren_api_key");
                     setToken("");
+                    setDraftKey("");
                     setAccount(null);
+                    setNewKey(null);
                     setRuns([]);
                     setKeys([]);
+                    setSelected(null);
+                    setReport("");
+                    setError("");
                   }}
                 >
                   Sign Out

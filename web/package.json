@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "node scripts/fetch-boxwren.mjs && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --experimental-strip-types --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON lib/*.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

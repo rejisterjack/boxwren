@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Navbar from "./components/Navbar";
+import BoxwrenLogo from "./components/BoxwrenLogo";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -73,12 +74,14 @@ export default function RootLayout({
         <footer className="site-footer">
           <div className="footer-inner">
             <div className="footer-brand-col">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span className="brand-mark" style={{ width: 14, height: 14 }} aria-hidden="true" />
-                <p className="font-semibold text-primary">Boxwren Runtime</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <BoxwrenLogo size={22} withGlow />
+                <p className="font-semibold text-primary" style={{ letterSpacing: "-0.01em" }}>
+                  Boxwren Runtime
+                </p>
               </div>
-              <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.35rem", maxWidth: "42ch" }}>
-                Software Fault Isolation for autonomous agent workflows. Dual-licensed MIT / Apache-2.0.
+              <p className="muted" style={{ fontSize: "0.82rem", marginTop: "0.5rem", maxWidth: "42ch", lineHeight: 1.5 }}>
+                Software Fault Isolation for autonomous agent workflows. In-process Wasmtime runtime dual-licensed MIT / Apache-2.0.
               </p>
             </div>
 
