@@ -163,7 +163,7 @@ export default function HeroSandbox() {
             <span className="dot dot-yellow" />
             <span className="dot dot-green" />
           </div>
-          <span className="terminal-title">boxwren-enclave-v0.2.3 // Wasmtime SFI Engine</span>
+          <span className="terminal-title">boxwren-enclave-v0.2.4 // Wasmtime SFI Engine</span>
         </div>
 
         <div className="sandbox-header-actions">

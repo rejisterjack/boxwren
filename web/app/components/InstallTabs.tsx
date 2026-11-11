@@ -45,7 +45,7 @@ if report["status"] == "permission_denied":
     rust: {
       label: "Rust (Cargo)",
       cmd: "cargo add boxwren",
-      badge: "crates.io v0.2.3",
+      badge: "crates.io v0.2.4",
       fileTitle: "main.rs",
       example: `use boxwren::{Engine, Limits, Grants};
 

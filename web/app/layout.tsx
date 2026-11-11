@@ -90,7 +90,7 @@ export default function RootLayout({
                 GitHub Repository
               </a>
               <a href="https://crates.io/crates/boxwren" target="_blank" rel="noreferrer">
-                crates.io (0.2.3)
+                crates.io (0.2.4)
               </a>
               <a href="https://pypi.org/project/boxwren-py/" target="_blank" rel="noreferrer">
                 PyPI (boxwren-py)

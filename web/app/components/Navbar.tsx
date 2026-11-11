@@ -77,9 +77,9 @@ export default function Navbar() {
             <BoxwrenLogo size={32} withGlow className="brand-logo-icon" />
             <span className="brand-name">Boxwren</span>
           </Link>
-          <span className="version-tag" title="Enforced Runtime Spec v0.2.3">
+          <span className="version-tag" title="Enforced Runtime Spec v0.2.4">
             <span className="version-dot" aria-hidden="true" />
-            v0.2.3 Wasmtime
+            v0.2.4 Wasmtime
           </span>
         </div>
 
