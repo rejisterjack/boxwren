@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const version = process.env.BOXWREN_CLI_VERSION || "v0.2.3";
+const version = process.env.BOXWREN_CLI_VERSION || "v0.2.4";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "bin");
 const release = `https://github.com/rejisterjack/boxwren/releases/download/${version}`;
 

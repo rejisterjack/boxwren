@@ -46,3 +46,37 @@ jobs:
         run: cargo deny check
       - name: cargo audit
         run: cargo audit
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build the C ABI
+        run: cargo build -p boxwren-ffi --release
+      - name: Test Go bindings
+        working-directory: bindings/go
+        run: go test ./...
