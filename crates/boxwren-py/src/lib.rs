@@ -155,9 +155,16 @@ fn runtime(err: impl ToString) -> PyErr {
 mod tests {
     use super::*;
 
+    /// Wheels leave `auto-initialize` off so they link without libpython.
+    /// These tests embed Python the way a host process would.
+    fn with_python<R>(body: impl FnOnce(Python<'_>) -> R) -> R {
+        Python::initialize();
+        Python::attach(body)
+    }
+
     #[test]
     fn python_export_returns_four() {
-        Python::attach(|py| {
+        with_python(|py| {
             let engine = Engine::new().unwrap();
             let report = engine
                 .execute(
@@ -187,7 +194,7 @@ mod tests {
 
     #[test]
     fn python_kill_stops_a_loop() {
-        Python::attach(|py| {
+        with_python(|py| {
             let engine = Engine::new().unwrap();
             let kill = engine.kill_handle();
             let flag = kill.inner.clone();

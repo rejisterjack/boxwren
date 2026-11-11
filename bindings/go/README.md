@@ -43,7 +43,7 @@ To link a released FFI library instead of a local build, download the `libboxwre
 CGO_LDFLAGS="-lboxwren_ffi" go build ./...
 ```
 
-Version tags on this module follow the repository tags (`go get github.com/rejisterjack/boxwren/bindings/go@v0.2.3`).
+Version tags on this module follow the repository tags (`go get github.com/rejisterjack/boxwren/bindings/go@v0.2.4`).
 
 ## License
 
