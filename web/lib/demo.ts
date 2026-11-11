@@ -56,12 +56,15 @@ export async function runDemo(scenario: DemoScenario, action: "run" | "kill"): P
 }
 
 async function runLoop(kill: boolean): Promise<DemoReport> {
-  if (kill) {
-    return runWat(LOOP_WAT, ["--entry", "run", "--timeout", "8s", "--fuel", "4611686018427387903"], {
-      interrupt: true,
-    });
+  if (!kill) {
+    return runWat(LOOP_WAT, ["--entry", "run", "--timeout", "200ms", "--fuel", "4611686018427387903"]);
   }
-  return runWat(LOOP_WAT, ["--entry", "run", "--timeout", "200ms", "--fuel", "4611686018427387903"]);
+  const flags = ["--entry", "run", "--timeout", "8s", "--fuel", "4611686018427387903"];
+  try {
+    return await runWat(LOOP_WAT, flags, { interrupt: true });
+  } catch {
+    return runWat(LOOP_WAT, flags, { interrupt: true });
+  }
 }
 
 async function runWat(
@@ -110,7 +113,10 @@ function runAndInterrupt(
       sent = true;
       child.kill("SIGINT");
     };
-    const backup = setTimeout(interrupt, 400);
+    // Cold start can take longer than the guest. Signaling before the CLI
+    // prints ready kills the process before its handler exists, so there is
+    // no report. The backup only covers a missed ready line.
+    const backup = setTimeout(interrupt, 3_000);
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
