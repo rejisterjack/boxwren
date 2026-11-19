@@ -304,7 +304,17 @@ Done means `/` and `/dashboard` advertise an icon and an Open Graph image, and t
 
 Matrix: icon links, Open Graph and Twitter tags, and a 200 response for each named asset. N/A: guest fuel, account login. This is document metadata.
 
-Evidence: both pages include `rel="icon"` for `/favicon.svg` and `/favicon.png`, `apple-touch-icon` for `/apple-icon.png`, `og:title`, `og:description`, `og:image` pointing at `/icon-512.png`, and `twitter:card` of `summary_large_image`. Asset responses: `/favicon.ico` 200, `/favicon.svg` 200, `/favicon.png` 200, `/apple-icon.png` 200, `/icon-512.png` 200, `/icon-192.png` 200, `/manifest.json` 200. No code change. Verdict PASS.
+Evidence: both pages include `rel="icon"` for `/favicon.svg` and `/favicon.png`, `apple-touch-icon` for `/apple-icon.png`, `og:title`, `og:description`, `og:image` pointing at `/icon-512.png`, and `twitter:card` of `summary_large_image`. Asset responses: `/favicon.ico` 200, `/favicon.svg` 200, `/favicon.png` 200, `/apple-icon.png` 200, `/icon-512.png` 200, `/icon-192.png` 200, `/manifest.json` 200. The Cursor browser document on `/` listed the same two icons, the apple touch icon, and `og:image`. No code change. Verdict PASS.
+
+---
+
+### P2-LOAD Short load test
+
+Done means a short burst of `GET /healthz` and `POST /v1/runs` on the local server returns success without a stack trace.
+
+Matrix: 100 health checks and 30 authenticated runs of a 2+2 module. N/A: a remote network and a production machine size. This is loopback on the dev server.
+
+Evidence: all 100 `GET /healthz` responses were 200. Median 0.2ms, p95 0.2ms, max 0.4ms. All 30 `POST /v1/runs` responses were 200 with `return_value` 4. Median 0.8ms, p95 2.0ms, max 69.5ms. No code change. Verdict PASS.
 
 ---
 
