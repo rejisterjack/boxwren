@@ -78,6 +78,19 @@ Evidence: `cargo test -p boxwren --lib` 9 passed, including fuel starvation, ove
 
 ---
 
+### P0-REPORT Schema v1 report and CLI exit codes
+
+Done means a successful run prints schema version 1, a stopped guest exits 1, and a missing module or missing argument exits 2.
+
+Matrix: add module exit 0 and `return_value` 4; fuel loop exit 1 with `fuel_exhausted`; missing path exit 2; empty argv exit 2; text `not wasm` is a `rejected` report and exit 1 because a report was produced. N/A: IDOR, mobile, SQL. The report is a local CLI document.
+
+Evidence: `boxwren run add.wat --entry run --report json` exit 0, `schema_version` 1, status success, return 4. Loop with `--fuel 50` exit 1, status `fuel_exhausted`. Missing file exit 2, message `could not read ... No such file`. No module argument exit 2. `not wasm` exit 1, status rejected, schema 1. `ship_core` `report_json_is_schema_v1` passed in the limits run. No bug. Verdict PASS.
+
+---
+
+
+---
+
 
 ---
 
