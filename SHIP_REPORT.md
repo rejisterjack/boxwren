@@ -58,3 +58,14 @@ Evidence: server `200` body `ok`; `/healthz/nope` `404`; web health `ok`; home `
 
 ---
 
+### P0-SANDBOX Deny-by-default filesystem, network, environment
+
+Done means a guest with empty grants cannot read `/etc/passwd`, open a socket, or see host environment, and a directory grant cannot escape its root. A path that looks like a grant flag in guest argv stays data.
+
+Matrix: secret read, granted dir plus `../` escape, network connect, env absent, hostname grant versus IP grant, root grant warned and not rewritten. N/A: browser back button, Redis, XSS. The guest is Wasm, not HTML.
+
+Evidence: `cargo test -p boxwren --test grants` 14 passed in 2.48s, including secret read, directory escape, read-only write rejection, network deny, env not inherited, IP grant without DNS, hostname grant connect, and root grant warned. CLI `boxwren run secret.wasm` printed `filesystem /etc/passwd denied` and stdout `blocked errno 8`, with no `root:`. `cargo fmt --all --check` and `cargo clippy -p boxwren --all-targets -- -D warnings` passed. No bug. Verdict PASS. Regression tests are the grant cases in `crates/boxwren/tests/grants.rs`.
+
+---
+
+

@@ -256,6 +256,153 @@ fn network_is_denied_unless_allowlisted() {
 }
 
 #[test]
+fn hostname_lookup_stays_off_for_an_ip_grant() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        let _ = listener.accept();
+    });
+    let mut grants = Grants::default();
+    grants
+        .net
+        .push(boxwren::NetGrant::parse(&format!("127.0.0.1:{port}")).unwrap());
+    let report = run(
+        p2("net"),
+        grants,
+        vec![format!("localhost:{port}")],
+        Limits::default(),
+    );
+    assert!(!report.stdout.contains("CONNECTED"), "{report:?}");
+}
+
+#[test]
+fn hostname_grant_can_connect() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let _ = stream.write_all(b"ok");
+        }
+    });
+    let mut grants = Grants::default();
+    grants
+        .net
+        .push(boxwren::NetGrant::parse(&format!("localhost:{port}")).unwrap());
+    let report = run(
+        p2("net"),
+        grants,
+        vec![format!("localhost:{port}")],
+        Limits::default(),
+    );
+    assert!(report.stdout.contains("CONNECTED"), "{report:?}");
+    assert!(
+        report.events.iter().any(|event| {
+            event.kind == EventKind::Network && event.decision == Decision::Allowed
+        }),
+        "{report:?}"
+    );
+}
+
+#[test]
+fn root_and_home_grants_are_warned_and_not_rewritten() {
+    let wasm = br#"(module (func (export "run") (result i32) i32.const 1))"#.to_vec();
+    let request = |grants| RunRequest {
+        wasm: wasm.clone(),
+        entry: Entry::Export("run".into()),
+        limits: Limits::default(),
+        grants,
+        args: Vec::new(),
+    };
+    let mut root = Grants::default();
+    root.dirs.push(DirGrant {
+        host: PathBuf::from("/"),
+        guest: "/".into(),
+        writable: false,
+    });
+    let report = engine().execute(request(root)).expect("root grant");
+    assert_eq!(report.return_value, Some(1), "{report:?}");
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("filesystem root")),
+        "{report:?}"
+    );
+
+    let mut home = Grants::default();
+    home.dirs.push(DirGrant {
+        host: PathBuf::from(std::env::var("HOME").unwrap()),
+        guest: "/home".into(),
+        writable: false,
+    });
+    let report = engine().execute(request(home)).expect("home grant");
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("home directory")),
+        "{report:?}"
+    );
+}
+
+#[test]
+fn env_parse_copies_the_host_or_sets_an_explicit_value() {
+    let name = "BOXWREN_SHIP_COPY";
+    // SAFETY: this test process does not read the variable from another thread.
+    unsafe { std::env::set_var(name, "from-host") };
+    let copied = boxwren::EnvGrant::parse(name).unwrap();
+    assert_eq!(copied.value, "from-host");
+
+    let explicit = boxwren::EnvGrant::parse("BOXWREN_SHIP_COPY=from-spec").unwrap();
+    assert_eq!(explicit.value, "from-spec");
+
+    let missing = boxwren::EnvGrant::parse("BOXWREN_SHIP_UNSET_ZZ");
+    assert!(missing.is_err(), "{missing:?}");
+}
+
+#[test]
+fn preflight_deny_returns_policy_before_the_guest() {
+    struct Deny;
+
+    impl boxwren::Preflight for Deny {
+        fn allow(&self, _: &RunRequest) -> Result<(), boxwren::PolicyDeny> {
+            Err(boxwren::PolicyDeny::new("denied by policy"))
+        }
+    }
+
+    let engine = engine();
+    let kill = engine.kill_handle();
+    let started = std::time::Instant::now();
+    let err = engine
+        .execute_with_preflight(
+            RunRequest {
+                wasm: br#"
+                    (module
+                      (func (export "run")
+                        (loop br 0)))
+                "#
+                .to_vec(),
+                entry: Entry::Export("run".into()),
+                limits: Limits {
+                    fuel: u64::MAX / 4,
+                    wall_time: Duration::from_secs(30),
+                    ..Limits::default()
+                },
+                grants: Grants::default(),
+                args: Vec::new(),
+            },
+            &kill,
+            &Deny,
+        )
+        .expect_err("policy");
+    assert!(
+        matches!(err, boxwren::Error::Policy(ref message) if message == "denied by policy"),
+        "{err:?}"
+    );
+    assert!(started.elapsed() < Duration::from_millis(500));
+}
+
+#[test]
 fn invalid_grant_fails_before_the_guest_runs() {
     let err = engine()
         .execute(RunRequest {
