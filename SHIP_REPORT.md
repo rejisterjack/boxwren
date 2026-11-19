@@ -188,6 +188,16 @@ Evidence: a stub returning 500 produced 403 `keywarden denied run: no` and no re
 
 ---
 
+### P1-CORS Browser origin allowlist
+
+Done means a listed origin is reflected and any other origin is not.
+
+Matrix: `http://localhost:3010` on the server started with that origin, `http://evil.example`, preflight for both, default server with `http://localhost:3000` and `http://localhost:3010`. N/A: SQL, module fuel. CORS is a response header.
+
+Evidence: the configured server reflected `access-control-allow-origin: http://localhost:3010` on `GET /healthz` and on `OPTIONS /v1/runs`, and allowed `GET,POST,OPTIONS` plus `authorization,content-type`. `http://evil.example` got 200 with no allow-origin header. The default server reflected `http://localhost:3000` and did not reflect `http://localhost:3010`. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
