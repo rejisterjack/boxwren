@@ -128,6 +128,16 @@ Evidence: bad email 400. Authenticated `{` is 400 `invalid JSON`. Logged-out run
 
 ---
 
+### P0-DASHBOARD Dashboard signup, reload, WAT run
+
+Done means a person can create an account in the browser, keep the key after reload and in a second tab, and run the sample module.
+
+Matrix: create account, empty email, duplicate email, reload, second tab, sample WAT, whitespace WAT, keyboard labels, 360px width. N/A: password login, Redis. The dashboard stores a bearer key in `localStorage`.
+
+Evidence: creating `dashboard-gate@example.com` showed the tenant and stored a `bw_` key. Reload and a second tab both restored that tenant and the run list. The sample module reported schema v1, status success, `return_value` 4, fuel 4. Whitespace WAT was stored as `rejected`. An empty email was blocked by the required field (`Please fill in this field.`). Submitting the same email showed `account already exists`. The email and WAT fields expose accessible names. At 360px the signed-in page overflowed: the version tag and GitHub control stayed in the header, and the report `<pre>` widened the panels. Fix: hide the version tag below 680px, force the GitHub control off below 900px, let panels shrink, and wrap the report text. After the fix, 360px `innerWidth` had `scrollWidth` 360 with the tenant still visible, and executing the sample again returned 4 with no horizontal overflow. `npx tsc --noEmit` passed. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.

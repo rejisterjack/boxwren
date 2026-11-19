@@ -348,7 +348,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Grid: Run WAT module & Runs Explorer */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: "2rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: "2rem", minWidth: 0 }}>
             {/* Run Module Form */}
             <form className="panel" onSubmit={runModule}>
               <h3>Execute WebAssembly Module</h3>
@@ -462,7 +462,10 @@ export default function DashboardPage() {
                       border: "1px solid var(--border-subtle)",
                       borderRadius: "var(--radius-sm)",
                       maxHeight: "220px",
-                      overflowY: "auto",
+                      maxWidth: "100%",
+                      overflow: "auto",
+                      whiteSpace: "pre-wrap",
+                      overflowWrap: "anywhere",
                       fontSize: "0.78rem",
                       color: "var(--text-secondary)",
                       fontFamily: "var(--font-mono)",
