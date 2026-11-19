@@ -228,6 +228,16 @@ Evidence before the fix: neither process sent `nosniff`, `DENY`, or `no-referrer
 
 ---
 
+### P1-AUDIT Dependency audit
+
+Done means `cargo audit` and `npm audit` report no known advisory in the locked trees, or a remaining advisory is recorded with the reason it stays.
+
+Matrix: `cargo audit` on `Cargo.lock`, `npm audit` on `web/package-lock.json`. N/A: browser, guest fuel. This is the dependency lock.
+
+Evidence: `cargo audit` first reported eight Wasmtime 50.0.1 advisories, all fixed in 50.0.2 or newer. The workspace now requires `wasmtime` and `wasmtime-wasi` 50.0.2, and the lock resolved to 50.0.3. `cargo test -p boxwren --lib` 9 passed on that build. A second `cargo audit` printed no advisories. `npm audit` reported PostCSS `<=8.5.22` (high, XSS in CSS stringify) through Next 15.5.28's pinned `postcss@8.4.31`. The registry's Next fix is 16.4.6, a major upgrade. An override to `postcss@8.5.33` clears the advisory without that upgrade. After `npm install`, `npm audit` reported zero vulnerabilities and the site still returned 200 for `/` and `/dashboard`. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
