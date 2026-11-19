@@ -99,6 +99,8 @@ export default function RootLayout({
                 docs.rs API Reference
               </a>
               <Link href="/dashboard">Operator Dashboard</Link>
+              <Link href="/privacy">Privacy</Link>
+              <Link href="/terms">Terms</Link>
             </div>
           </div>
         </footer>

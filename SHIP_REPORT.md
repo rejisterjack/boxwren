@@ -248,6 +248,16 @@ Evidence: `assertDatabaseUrl()` throws `DATABASE_URL is not set` when the variab
 
 ---
 
+### P1-LEGAL Privacy and terms
+
+Done means the site has a page that says what it stores and a page that says what the sandbox does not claim, both linked from the footer.
+
+Matrix: `/privacy` and `/terms` return 200, the footer links are on `/`. N/A: password reset, billing. There is no account password.
+
+Evidence: `/privacy` 200 and names the stored email, the API-key hash, localStorage, and the absence of a password. `/terms` 200 and says the boundary is software fault isolation, not a virtual machine, and that the hosted site clamps limits. The home page footer links to both. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
