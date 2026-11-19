@@ -138,6 +138,16 @@ Evidence: creating `dashboard-gate@example.com` showed the tenant and stored a `
 
 ---
 
+### P0-RATELIMIT Server 429 and Neon 60 per minute
+
+Done means the local API starts refusing after its configured limit, health stays up, and the hosted API refuses the 61st authenticated call in a minute.
+
+Matrix: four anonymous calls against a limit of 3, health during the limit, 65 authenticated hosted calls inside one minute, error text has no stack. N/A: Redis, browser. The counters are in-process for the server and a Postgres row for the site.
+
+Evidence: server on port 8790 with `--rate-limit 3` returned 401, 401, 401, then 429 `rate limit exceeded`. `GET /healthz` stayed 200. Hosted `GET /v1/me` inside one minute returned 200 sixty times and 429 `rate limit exceeded` on request 61, five times in all. The body had no stack trace. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
