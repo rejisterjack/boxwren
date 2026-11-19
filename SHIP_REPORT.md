@@ -118,6 +118,16 @@ Evidence: B `GET` 404 `run not found` and B's list did not contain A's id. Anony
 
 ---
 
+### P0-HOSTED Next.js /v1 clamps, argv isolation, kill 409
+
+Done means the public site runs a module through the CLI with clamped limits, ignores grant-shaped guest argv, refuses `wait: false`, and refuses live kill.
+
+Matrix: bad email, malformed JSON, logged out, oversized fuel and memory and wall, guest `--allow-dir` plus a `dirs` field, spinning module, cross-account get, kill, flag-shaped entry. N/A: Redis, mobile. The browser cases belong to the dashboard.
+
+Evidence: bad email 400. Authenticated `{` is 400 `invalid JSON`. Logged-out run 401. A 2+2 module with fuel `1e12`, memory `1e12`, and wall `1e9` returned 4. `wait: false` 400 `live kill requires the local boxwren-server`. A `/etc/passwd` guest with `--allow-env DATABASE_URL`, `--allow-dir /:/:rw`, and `dirs: ["/:/:rw"]` was denied on `/etc/passwd` and stdout had no `root:`. A spin with fuel `1e15` and wall `60000` finished `fuel_exhausted` in 277ms, so the 1e9 fuel clamp held. Account B `GET` 404. Owner kill 409 with the same live-kill message. Entry `--allow-env` 400 `invalid entry`. `npm test` 4 passed, including the grant-argv regression in `web/lib/run.test.ts`. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
