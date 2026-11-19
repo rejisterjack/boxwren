@@ -98,15 +98,13 @@ Evidence: `cargo test -p boxwren-cli --test cli` 7 passed in 1.77s: export retur
 
 ---
 
+### P0-ACCOUNTS Accounts, bearer auth, API keys
 
----
+Done means a trimmed email creates an account and a bearer key, a bad or duplicate email is refused, and a second key can be created and listed.
 
+Matrix: empty object, `not-an-email`, whitespace, unicode local-part, malformed `{`, duplicate after trim and lowercase, `GET /v1/me` with bearer, missing and bad bearer, empty and 81-character key name, create and list, double submit of the same key name. N/A: password login, OAuth, browser. The product issues a bearer key and does not have a session cookie.
 
----
-
-
----
-
+Evidence: bad and blank email 400 `invalid email`. `üser@example.com` 200. `{` 400 JSON parse error. `{}` 422 missing `email`. `Ship.Gate+Accounts@Example.com` stored as `ship.gate+accounts@example.com`, duplicate 409 `account already exists`. `GET /v1/me` 200 with the email. No header 401 `missing Authorization`. Bad key 401 `invalid API key`. Empty and 81-character names 400 `invalid key name`. Named key listed beside `default`. A second key named `ci` is a new id, so double submit creates two keys rather than corrupting the first. No bug. Verdict PASS.
 
 ---
 
