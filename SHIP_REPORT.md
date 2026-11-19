@@ -158,6 +158,16 @@ Evidence: `run-py hi.py` exit 0, stdout `hello-py`. `run-js hi.js` exit 0, stdou
 
 ---
 
+### P1-PYTHON boxwren_py execute, kill, grant strings
+
+Done means Python can run a module and a second Python thread can kill it before the wall clock fires.
+
+Matrix: 2+2, empty module, bad grant string, kill from another Python thread. N/A: browser back button, SQL. This is an in-process library.
+
+Evidence: `Engine.execute` on the add module returned 4. Empty bytes returned status `rejected` and did not raise. `dirs=["not-a-grant"]` raised `RuntimeError` naming the grant syntax. A loop with fuel `2**62` and wall 5000ms was killed by another Python thread in 55ms, status `killed`. `cargo test -p boxwren-py --lib` 2 passed. `cargo clippy -p boxwren-py --all-targets -- -D warnings` passed. The binding releases the GIL around Wasmtime in `crates/boxwren-py/src/lib.rs`. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.

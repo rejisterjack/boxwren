@@ -81,11 +81,16 @@ impl Engine {
             net,
             env,
         )?;
-        let report = match kill {
-            Some(kill) => self.inner.execute_with(request, &kill.inner),
-            None => self.inner.execute(request),
-        }
-        .map_err(runtime)?;
+        // Drop the GIL so another Python thread can call `KillHandle.kill`
+        // while this run is still inside Wasmtime.
+        let engine = self.inner.clone();
+        let kill = kill.map(|handle| handle.inner.clone());
+        let report = py
+            .detach(move || match &kill {
+                Some(kill) => engine.execute_with(request, kill),
+                None => engine.execute(request),
+            })
+            .map_err(runtime)?;
         let json = PyModule::import(py, "json")?;
         json.call_method1("loads", (report.to_json(),))
     }
