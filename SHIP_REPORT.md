@@ -15,34 +15,34 @@ Every row starts Not tested. Passed is written only after that feature's matrix 
 | ID | Name | Priority | Status |
 | --- | --- | --- | --- |
 | P0-BOOT | Server and web health | P0 | Passed |
-| P0-SANDBOX | Deny-by-default filesystem, network, environment | P0 | Not tested |
-| P0-LIMITS | Fuel, memory, wall clock, module size, stdio, kill, sibling | P0 | Not tested |
-| P0-REPORT | Schema v1 report and CLI exit codes | P0 | Not tested |
-| P0-CLI | run, grants, demo, Ctrl-C, export-undoom | P0 | Not tested |
-| P0-ACCOUNTS | Accounts, bearer auth, API keys | P0 | Not tested |
-| P0-RUNS | Sync run, list, get, live kill | P0 | Not tested |
-| P0-IDOR | Cross-account run isolation | P0 | Not tested |
-| P0-HOSTED | Next.js /v1 clamps, argv isolation, kill 409 | P0 | Not tested |
-| P0-DASHBOARD | Dashboard signup, reload, WAT run | P0 | Not tested |
-| P0-RATELIMIT | Server 429 and Neon 60 per minute | P0 | Not tested |
-| P1-INTERPRETERS | run-py and run-js WASI guests | P1 | Not tested |
-| P1-PYTHON | boxwren_py execute, kill, grant strings | P1 | Not tested |
-| P1-GO | Go C ABI execute and kill | P1 | Not tested |
-| P1-KEYWARDEN | Admission preflight | P1 | Not tested |
-| P1-CORS | Browser origin allowlist | P1 | Not tested |
-| P1-SQLITE | Run row survives process restart | P1 | Not tested |
-| P1-DEMO | Home demo scenarios | P1 | Not tested |
-| P1-HEADERS | Security headers | P1 | Not tested |
-| P1-AUDIT | Dependency audit | P1 | Not tested |
-| P1-DOCKER | boxwren-server image | P1 | Not tested |
-| P1-CI | Local CI command shape | P1 | Not tested |
-| P1-ENV | Missing DATABASE_URL fails clearly | P1 | Not tested |
-| P1-A11Y | Keyboard, labels, four widths | P1 | Not tested |
-| P1-LEGAL | Privacy and terms | P1 | Not tested |
-| P2-FUZZ | Release fuzz smoke | P2 | Not tested |
-| P2-LIGHTHOUSE | Lighthouse on / and /dashboard | P2 | Not tested |
-| P2-LOAD | Short load test | P2 | Not tested |
-| P2-META | Favicon and Open Graph | P2 | Not tested |
+| P0-SANDBOX | Deny-by-default filesystem, network, environment | P0 | Passed |
+| P0-LIMITS | Fuel, memory, wall clock, module size, stdio, kill, sibling | P0 | Passed |
+| P0-REPORT | Schema v1 report and CLI exit codes | P0 | Passed |
+| P0-CLI | run, grants, demo, Ctrl-C, export-undoom | P0 | Passed |
+| P0-ACCOUNTS | Accounts, bearer auth, API keys | P0 | Passed |
+| P0-RUNS | Sync run, list, get, live kill | P0 | Passed |
+| P0-IDOR | Cross-account run isolation | P0 | Passed |
+| P0-HOSTED | Next.js /v1 clamps, argv isolation, kill 409 | P0 | Passed |
+| P0-DASHBOARD | Dashboard signup, reload, WAT run | P0 | Fixed |
+| P0-RATELIMIT | Server 429 and Neon 60 per minute | P0 | Passed |
+| P1-INTERPRETERS | run-py and run-js WASI guests | P1 | Passed |
+| P1-PYTHON | boxwren_py execute, kill, grant strings | P1 | Fixed |
+| P1-GO | Go C ABI execute and kill | P1 | Passed |
+| P1-KEYWARDEN | Admission preflight | P1 | Passed |
+| P1-CORS | Browser origin allowlist | P1 | Passed |
+| P1-SQLITE | Run row survives process restart | P1 | Passed |
+| P1-DEMO | Home demo scenarios | P1 | Passed |
+| P1-HEADERS | Security headers | P1 | Fixed |
+| P1-AUDIT | Dependency audit | P1 | Fixed |
+| P1-DOCKER | boxwren-server image | P1 | Fixed |
+| P1-CI | Local CI command shape | P1 | Passed |
+| P1-ENV | Missing DATABASE_URL fails clearly | P1 | Fixed |
+| P1-A11Y | Keyboard, labels, four widths | P1 | Fixed |
+| P1-LEGAL | Privacy and terms | P1 | Fixed |
+| P2-FUZZ | Release fuzz smoke | P2 | Passed |
+| P2-LIGHTHOUSE | Lighthouse on / and /dashboard | P2 | Fixed |
+| P2-LOAD | Short load test | P2 | Passed |
+| P2-META | Favicon and Open Graph | P2 | Passed |
 
 Not in the product, and not implemented by this gate: password login, logout, reset, OAuth, roles, Redis, queues, cron, webhooks, email, payments, i18n.
 
@@ -345,6 +345,36 @@ Done means an authenticated caller can run a module, read it back, and kill a ba
 Matrix: logged out, empty body, malformed JSON, whitespace module, bad WAT, happy 2+2, negative fuel, unicode argv, `--allow-dir` in guest argv, `../..` directory grant, bad grant syntax, list, get, missing id, double submit, `wait: false` plus kill. N/A: browser back button, Redis. The API is bearer-authenticated JSON.
 
 Evidence: logged out 401. Empty body 400 `provide wasm_base64 or wasm_text`. `not-json` 400. Whitespace and `not wasm` stored as schema v1 `rejected`. Happy run status success, `return_value` 4. `fuel: -1` 422. Unicode argv still returns 4. Guest argv `--allow-dir /:/:rw` and dir grant `../..:/:rw` both denied `/etc/passwd` with no `root:` in stdout. Bad grant 400 before the guest. `GET` of the run id returned the same success report. Missing id 404 `run not found`. A second submit created a new id. `wait: false` returned `running` in 1ms, `POST .../kill` returned 202, and the stored report was `killed` at 58ms. A second kill was 404 `run not in flight`. No bug. Verdict PASS.
+
+---
+
+### Phase 4 Production simulation
+
+Done means the release CLI, the production Next server, and the server image still do the sandbox, the account boundary, and the dashboard.
+
+Matrix: `cargo build -p boxwren-cli --release`, `next build` then `next start`, release `boxwren demo`, cross-account get and kill on the image, dashboard signup and a sample run on the production server. N/A: a public deploy. This is the local production build.
+
+Evidence: `./target/release/boxwren demo` exited 0. The secret guest printed `filesystem /etc/passwd denied` and stdout `blocked errno 8`, with no `root:`. The network guest denied `127.0.0.1:1`. The memory guest was `memory_limited`. A missing module exited 2. The image on `127.0.0.1:8796` returned another account's get and kill as `404 run not found`, the owner kill as `202`, and the stored report as `killed`. `next build` exited 0 and `next start` on port 3010 served `/` with the description meta inside `<head>` and the four security headers, and without `X-Powered-By`. The production dashboard created an account, restored it after reload, and the sample module returned schema v1 `success` with `return_value` 4 and fuel 4. At 360px the production dashboard `scrollWidth` was 360. The built client chunks contain no `DATABASE_URL`. `DATABASE_URL` still fails the process when it is missing, from P1-ENV. `BOXWREN_LISTEN` stays optional at `127.0.0.1:8787`, and `PORT` overrides it when set. The README sentence that said a bundled interpreter is not part of the runtime disagreed with `run-py` and `run-js`. It now says the CLI runs Python and JavaScript inside the bundled WASI modules. `gh run list` still has no CI run for this tree. The latest success remains run 43068555736 on `main` from 2026-11-11.
+
+---
+
+### Phase 5 Verdict
+
+**GO.** Every P0 row is Passed or Fixed, and no P1 row is an open failure. Fixed means the matrix was re-run after the repair.
+
+Bugs fixed in this gate: comment contrast and button names, dashboard heading order, the description meta in the initial head, nav collapse and install-tab overflow, security headers, the Wasmtime requirement moved to 50.0.2 (lock 50.0.3), the PostCSS override, `DATABASE_URL` fail-fast, the Python GIL released during execute, privacy and terms pages, and env files excluded from the image build context.
+
+Performance: Lighthouse on `next dev` was 79 performance, 100 accessibility, 100 best practices, 100 SEO for both `/` and `/dashboard` after the fixes. Loopback load on the API was 100 `GET /healthz` at p95 0.2ms and 30 `POST /v1/runs` at p95 2.0ms.
+
+Accepted residuals, from `docs/THREAT_MODEL.md`: a bug in Wasmtime or the OS, Spectre-class leaks, compilation that cannot be interrupted, a broad grant the embedder chose, DNS rebinding on a hostname grant, preview 1 `std::fs` failing before `path_open`, and software fault isolation that is not a virtual machine.
+
+Pre-launch checklist:
+
+- This tree's GitHub CI has not run. The local commands in `.github/workflows/ci.yml` passed.
+- Neon was not migrated.
+- The raw API key is shown once and kept in `localStorage`. It is not in the client bundle.
+- The hosted site still refuses a live kill and ignores grant fields.
+- Do not treat the demo `Dockerfile` as the product. `Dockerfile.server` is the image.
 
 ---
 
