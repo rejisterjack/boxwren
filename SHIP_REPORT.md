@@ -328,6 +328,16 @@ Evidence: the first run scored home 78 / 96 / 100 / 90 and dashboard 79 / 98 / 1
 
 ---
 
+### Phase 3 Cross-cutting checks
+
+Done means the product-wide checks that are not one feature still hold on this tree: headers, CORS, client secrets, hosted clamps, audits, plain-text errors, an empty SQLite file, and the widths and Lighthouse numbers above.
+
+Matrix: server and web headers, an allowlisted origin and a rejected origin, the client JavaScript, `hostedCommand` clamps, audit commands, error bodies, the schema on a new SQLite file, and no destructive Neon migration. N/A: a new password store. The site has no password.
+
+Evidence: `GET /healthz` on the server reflects `Origin: http://localhost:3010` and does not reflect `https://evil.example`. Both that response and an unknown path carry `nosniff`, `DENY`, and `no-referrer`. The web home carries those three plus `Permissions-Policy: camera=(), microphone=(), geolocation=()` and no `X-Powered-By`. Five client chunks from `/`, `/dashboard`, `/privacy`, and `/terms` contain no `DATABASE_URL`, no `postgres://`, and no `neon.tech`. The only `bw_` string is the dashboard placeholder `bw_…`. `hostedCommand` still clamps fuel to 1e9, memory to 32 MiB, and wall to 2000ms, rejects an entry that starts with `-`, and places guest argv after `--`. A bad email is `400` `text/plain` with no stack trace, and a missing bearer token is `401` with no stack trace. The Docker mount created `/data/boxwren.sqlite` with `accounts`, `api_keys`, and `runs`. Neon was not migrated. Widths are in P1-A11Y. Lighthouse numbers are in P2-LIGHTHOUSE. Dependency audits are in P1-CI. No new code in this pass. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
