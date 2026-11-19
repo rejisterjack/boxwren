@@ -192,7 +192,26 @@ fn build_app(state: Arc<AppState>, cors_origins: &[String]) -> Router {
         .merge(v1)
         .layer(cors_layer(cors_origins))
         .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(security_headers))
         .with_state(state)
+}
+
+async fn security_headers(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        HeaderName::from_static("x-frame-options"),
+        HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        HeaderName::from_static("referrer-policy"),
+        HeaderValue::from_static("no-referrer"),
+    );
+    response
 }
 
 async fn rate_limit_middleware(
@@ -759,6 +778,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.headers().get("x-content-type-options").unwrap(),
+            "nosniff"
+        );
+        assert_eq!(res.headers().get("x-frame-options").unwrap(), "DENY");
+        assert_eq!(res.headers().get("referrer-policy").unwrap(), "no-referrer");
         assert_eq!(body_string(res).await, "ok");
     }
 

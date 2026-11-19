@@ -218,6 +218,16 @@ Evidence: secret denied `/etc/passwd` with empty stdout. Loop `timed_out`. Netwo
 
 ---
 
+### P1-HEADERS Security headers
+
+Done means the API and the site tell browsers not to sniff content, not to frame the page, and not to send a referrer.
+
+Matrix: `GET /healthz` and a 404 on the server, `/`, `/dashboard`, and `/healthz` on the site. N/A: module fuel, IDOR. This is response metadata.
+
+Evidence before the fix: neither process sent `nosniff`, `DENY`, or `no-referrer`, and the site sent `X-Powered-By: Next.js`. Fix: the server sets the three headers on every response, including 404, in `security_headers`. The site sets those plus `Permissions-Policy` and turns `poweredByHeader` off. After restart, server health and 404 carried the three headers. Home, dashboard, and web health carried all four and no longer sent `X-Powered-By`. `healthz_ok` asserts the server headers. `cargo clippy -p boxwren-server --all-targets -- -D warnings` passed. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
