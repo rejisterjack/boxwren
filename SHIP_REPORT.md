@@ -268,6 +268,16 @@ Evidence: the operator email field is named `Operator Email`, the sample module 
 
 ---
 
+### P1-DOCKER boxwren-server image
+
+Done means `Dockerfile.server` builds, the container serves `GET /healthz`, and its database file lives on a mounted directory. The demo `Dockerfile` is not this image.
+
+Matrix: image build, health check, unknown path, restart with the same mount, no env file in the runtime image. N/A: dashboard keyboard, Neon rate limit. This image is the API process only.
+
+Evidence: `docker build -f Dockerfile.server -t boxwren-server:ship .` exited 0. The container on `127.0.0.1:8796` with `/tmp/boxwren-docker-data` mounted at `/data` returned `200 ok` from `/healthz` and `404` from `/nope`, both with `x-content-type-options: nosniff`, `x-frame-options: DENY`, and `referrer-policy: no-referrer`. Restart left `/data/boxwren.sqlite` (36864 bytes) in place and `/healthz` stayed 200. A search of the runtime image found no `.env` file. `.dockerignore` now excludes `.env`, `.env.local`, and `.env.*.local` so the build context does not upload `web/.env.local`. `cargo fmt --all --check` passed. The workspace clippy and `cargo test --workspace --no-default-features` run on this tree exited 0. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.

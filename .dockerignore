@@ -5,4 +5,7 @@ web/node_modules
 web/.next
 **/*.sqlite
 **/*.sqlite-*
+**/.env
+**/.env.local
+**/.env.*.local
 .DS_Store
