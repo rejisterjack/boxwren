@@ -238,6 +238,16 @@ Evidence: `cargo audit` first reported eight Wasmtime 50.0.1 advisories, all fix
 
 ---
 
+### P1-ENV Missing DATABASE_URL fails clearly
+
+Done means a Next process that serves `/v1` refuses to start, with a plain message, when `DATABASE_URL` is absent. `BOXWREN_LISTEN` and `BOXWREN_DB` stay optional.
+
+Matrix: unset variable, empty variable. N/A: guest fuel, browser width. This is process startup.
+
+Evidence: `assertDatabaseUrl()` throws `DATABASE_URL is not set` when the variable is unset. `register()` in `web/instrumentation.ts` prints that message and exits 1 when the variable is empty. The local server still defaults `BOXWREN_LISTEN` to `127.0.0.1:8787` and `BOXWREN_DB` to `boxwren-server.sqlite` when those are omitted. `npx tsc --noEmit` passed. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.

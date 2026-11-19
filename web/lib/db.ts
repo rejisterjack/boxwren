@@ -2,6 +2,8 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { neon } from "@neondatabase/serverless";
 
+import { assertDatabaseUrl } from "./env";
+
 export type Account = { id: string; email: string };
 export type ApiKey = { id: string; name: string; prefix: string; created_at: string };
 export type RunSummary = {
@@ -13,11 +15,7 @@ export type RunSummary = {
 };
 
 export function db() {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is not set");
-  }
-  return neon(url);
+  return neon(assertDatabaseUrl());
 }
 
 export function sha256(value: string): string {
