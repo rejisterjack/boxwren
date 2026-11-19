@@ -850,7 +850,7 @@
   }
 
   .code-comment .line-content {
-    color: #6b7280;
+    color: #8b95a7;
     font-style: italic;
   }
 
@@ -1881,7 +1881,7 @@
     max-width: 100%;
   }
 
-  .panel h3 {
+  .panel h2 {
     margin-bottom: 0.75rem;
     font-size: 1.15rem;
     color: var(--text-primary);
@@ -2323,7 +2323,7 @@
   }
 
   .line-comment {
-    color: #6b7280;
+    color: #8b95a7;
     font-style: italic;
   }
 

@@ -201,7 +201,7 @@ export default function DashboardPage() {
       {!token ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <form className="panel" onSubmit={signup} style={{ maxWidth: 440, width: "100%" }}>
-            <h3>Authenticate with Enclave</h3>
+            <h2>Authenticate with Enclave</h2>
             <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1.25rem" }}>
               Sign up with your email to generate a hosted tenant key or paste an existing key.
             </p>
@@ -246,7 +246,7 @@ export default function DashboardPage() {
           <div className="panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
               <div>
-                <h3>Active Operator Tenant</h3>
+                <h2>Active Operator Tenant</h2>
                 <p className="muted" style={{ fontFamily: "var(--font-mono)", fontSize: "0.85rem" }}>
                   {account ? `${account.email} · ID: ${account.id}` : "Connecting to telemetry..."}
                 </p>
@@ -351,7 +351,7 @@ export default function DashboardPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: "2rem", minWidth: 0 }}>
             {/* Run Module Form */}
             <form className="panel" onSubmit={runModule}>
-              <h3>Execute WebAssembly Module</h3>
+              <h2>Execute WebAssembly Module</h2>
               <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
                 Submit WebAssembly Text (WAT) or bytecode to the Wasmtime sandbox enforcer.
               </p>
@@ -376,7 +376,7 @@ export default function DashboardPage() {
 
             {/* Runs & Audit Log */}
             <div className="panel">
-              <h3>Execution History</h3>
+              <h2>Execution History</h2>
               <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
                 Select a run to view its deterministic Schema v1 JSON report.
               </p>

@@ -172,7 +172,6 @@ export default function HeroSandbox() {
             className={`btn-action btn-run ${isRunning ? "running" : ""}`}
             onClick={() => void execute("run")}
             disabled={isRunning}
-            aria-label="Execute scenario in sandbox"
           >
             {isRunning ? (
               <>
@@ -191,7 +190,6 @@ export default function HeroSandbox() {
             className={`btn-action btn-kill ${report?.status?.kind === "killed" ? "killed-active" : ""}`}
             onClick={() => void execute("kill")}
             disabled={isRunning}
-            aria-label="Stop a live guest with the kill switch"
           >
             <span className="kill-icon" aria-hidden="true">⏹</span>
             Kill Switch

@@ -318,6 +318,16 @@ Evidence: all 100 `GET /healthz` responses were 200. Median 0.2ms, p95 0.2ms, ma
 
 ---
 
+### P2-LIGHTHOUSE Lighthouse on / and /dashboard
+
+Done means Lighthouse numbers are recorded for `/` and `/dashboard`, and a failed audit that is a product defect is fixed.
+
+Matrix: performance, accessibility, best practices, and SEO on both routes against the local dev server. N/A: a production CDN and a remote network. These numbers are from `next dev` on port 3010.
+
+Evidence: the first run scored home 78 / 96 / 100 / 90 and dashboard 79 / 98 / 100 / 90 (performance, accessibility, best practices, SEO). Accessibility failed on comment text at 4.21:1 (`#6b7280` on `#030604`), a Run button whose accessible name did not match the visible label, and a dashboard heading that skipped from `h1` to `h3`. SEO failed because the description meta was streamed after `</head>`. Comment text is now `#8b95a7` (6.74:1 on that background), the Run and Kill buttons use their visible labels, the dashboard sections are `h2`, and the description meta is in the initial head. The rerun scored 79 / 100 / 100 / 100 on `/` and 79 / 100 / 100 / 100 on `/dashboard`. The remaining performance points are unminified dev assets and main-thread time in `next dev`. `npx tsc --noEmit` passed and `npm test` passed 4 tests. `cargo fmt --all --check` passed. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
