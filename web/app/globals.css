@@ -377,7 +377,7 @@
     padding-top: 1rem;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1200px) {
     .desktop-nav {
       display: none !important;
     }
@@ -2819,6 +2819,7 @@
   .install-tabs-card {
     width: 100%;
     max-width: 760px;
+    min-width: 0;
     background: var(--surface-base);
     border: 1px solid var(--border-prominent);
     border-radius: var(--radius-lg);
@@ -2828,6 +2829,8 @@
 
   .install-tab-nav {
     display: flex;
+    width: 100%;
+    min-width: 0;
     background: var(--surface-void);
     border-bottom: 1px solid var(--border-subtle);
     overflow-x: auto;

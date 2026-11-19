@@ -258,6 +258,16 @@ Evidence: `/privacy` 200 and names the stored email, the API-key hash, localStor
 
 ---
 
+### P1-A11Y Keyboard, labels, four widths
+
+Done means `/` and `/dashboard` can be used from the keyboard and do not scroll sideways at 360, 768, 1024, and 1440.
+
+Matrix: accessible names, the mobile menu button, page `scrollWidth` at the four widths on both routes. N/A: Redis, guest fuel. This is the Cursor browser.
+
+Evidence: the operator email field is named `Operator Email`, the sample module field is named `WASM Text Format (WAT)`, and the scenario button is named `Execute scenario in sandbox`. At 1024 the home page overflowed to 1119px because the desktop nav was 1120px wide and the install tabs reported 1302px. The nav now collapses at 1200px, and the install tab row is constrained so it scrolls inside the card. After that, in the Cursor browser: home 360 `scrollWidth` 360 with the menu button and Privacy link, home 768 `scrollWidth` 768, home 1024 `scrollWidth` 1024, home 1440 `scrollWidth` 1440 with the desktop nav visible. Dashboard 360, 768, 1024, and 1440 each had `scrollWidth` equal to the viewport. Verdict FIXED.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
