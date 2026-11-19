@@ -168,6 +168,16 @@ Evidence: `Engine.execute` on the add module returned 4. Empty bytes returned st
 
 ---
 
+### P1-GO Go C ABI execute and kill
+
+Done means the Go package runs a module through the release C ABI, a goroutine can kill a loop, and a bad grant string fails before the guest.
+
+Matrix: export returns 4, kill, missing directory, unset environment variable. N/A: browser, SQL. The package is a cgo wrapper.
+
+Evidence: `cargo build -p boxwren-ffi --release` then `go test ./...` in `bindings/go` passed in 0.418s, including `TestExportReturnsFour`, `TestKillStopsALoop`, and `TestGrantStringsMatchTheCLI`. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.

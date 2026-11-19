@@ -31,7 +31,7 @@ func TestKillStopsALoop(t *testing.T) {
 	}()
 	started := time.Now()
 	report, err := engine.ExecuteWith(wasm, Request{
-		Entry: "run",
+		Entry:  "run",
 		WallMS: &wall,
 		Fuel:   &fuel,
 	}, kill)
@@ -82,5 +82,28 @@ func TestExportReturnsFour(t *testing.T) {
 	}
 	if parsed.ReturnValue == nil || *parsed.ReturnValue != 4 {
 		t.Fatalf("return value %+v", parsed.ReturnValue)
+	}
+}
+
+func TestGrantStringsMatchTheCLI(t *testing.T) {
+	engine, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer engine.Close()
+	wasm := []byte(`(module (func (export "run") (result i32) i32.const 1))`)
+	_, err = engine.Execute(wasm, Request{
+		Entry: "run",
+		Dirs:  []string{"/no/such/boxwren-dir:guest"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "no/such") {
+		t.Fatalf("expected missing directory, got %v", err)
+	}
+	_, err = engine.Execute(wasm, Request{
+		Entry: "run",
+		Env:   []string{"BOXWREN_GO_UNSET_ZZ"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "not set") {
+		t.Fatalf("expected unset variable, got %v", err)
 	}
 }
