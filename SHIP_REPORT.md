@@ -288,6 +288,16 @@ Evidence: `cargo fmt --all --check` passed. `cargo clippy --workspace --all-targ
 
 ---
 
+### P2-FUZZ Release fuzz smoke
+
+Done means random byte strings passed to `Engine::execute` return a report or an error and do not panic the host.
+
+Matrix: the release `fuzz_smoke` test, including empty bytes and a short wasm-looking prefix. N/A: browser, accounts, Neon. This is a library test.
+
+Evidence: `cargo test -p boxwren --test fuzz_smoke --release` ran 2 tests. `random_modules_do_not_panic` passed (48 random modules, empty bytes, and two wasm-looking prefixes, each with a 200ms wall and 50,000 fuel). `longer_random_modules` stayed ignored, which is what the CI command does. No code change. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
