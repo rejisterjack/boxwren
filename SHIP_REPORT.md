@@ -198,6 +198,16 @@ Evidence: the configured server reflected `access-control-allow-origin: http://l
 
 ---
 
+### P1-SQLITE Run row survives process restart
+
+Done means a finished run can be read with the same API key after the server process is replaced.
+
+Matrix: create a run, stop the process, start it on the same file, `GET` the id, health. N/A: browser, Redis. The row is a SQLite table.
+
+Evidence: run `02057606-27d1-49f3-970c-9603b2a8515d` returned 7 before the stop. After `boxwren-server` was started again on `/tmp/boxwren-ship-gate.sqlite`, `GET` returned 200, the same id, status success, `return_value` 7, schema 1. `GET /healthz` returned `ok`. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
