@@ -178,6 +178,16 @@ Evidence: `cargo build -p boxwren-ffi --release` then `go test ./...` in `bindin
 
 ---
 
+### P1-KEYWARDEN Admission preflight
+
+Done means a run does not start when Keywarden returns 500 or is unreachable, and a 200 response lets the module return.
+
+Matrix: stub 500, stub 200, connection refused. N/A: browser, Redis. Preflight is an HTTP call before Wasmtime.
+
+Evidence: a stub returning 500 produced 403 `keywarden denied run: no` and no report. The stub received `{"action":"boxwren.run","entry":"run"}`. A stub returning 200 let the add module return 4. A closed port produced 403 `keywarden request failed: error sending request...` with no stack trace. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
