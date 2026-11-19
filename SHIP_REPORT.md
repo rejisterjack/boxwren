@@ -278,6 +278,16 @@ Evidence: `docker build -f Dockerfile.server -t boxwren-server:ship .` exited 0.
 
 ---
 
+### P1-CI Local CI command shape
+
+Done means the commands in `.github/workflows/ci.yml` pass on this tree. A green GitHub run is a separate fact and is recorded only if `gh` can see one for this commit.
+
+Matrix: format, clippy, workspace tests without default features, interpreters lib tests, release fuzz smoke, `cargo deny`, `cargo audit`, web typecheck and `npm test`, Go tests against the release C ABI. N/A: dashboard viewport, Keywarden stub. CI does not render the site.
+
+Evidence: `cargo fmt --all --check` passed. `cargo clippy --workspace --all-targets -- -D warnings` and `cargo test --workspace --no-default-features` exited 0. Interpreters lib tests: 12 passed. Release `fuzz_smoke`: 1 passed, 1 ignored. `cargo build -p boxwren-ffi --release` then `go test ./...` passed. `cargo deny check` reported advisories, bans, licenses, and sources ok; it also printed duplicate-crate warnings and an unused `CC0-1.0` allowance, and still exited 0. `cargo audit` exited 0 after scanning 309 crates against 1550 advisories. In `web/`, `npx tsc --noEmit` passed and `npm test` passed 4 tests. `gh run list` shows the latest CI success is run 43068555736 on `main` from 2026-11-11. That run is not this tree. No code change. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
