@@ -148,6 +148,16 @@ Evidence: server on port 8790 with `--rate-limit 3` returned 401, 401, 401, then
 
 ---
 
+### P1-INTERPRETERS run-py and run-js WASI guests
+
+Done means `run-py` and `run-js` execute source inside the bundled WASI interpreters, a host file read does not return host bytes, and a spin stops.
+
+Matrix: hello Python, hello JavaScript, Python read of `/etc/passwd`, empty file, syntax error, missing file, JavaScript spin. N/A: browser, Neon, IDOR. These commands are local.
+
+Evidence: `run-py hi.py` exit 0, stdout `hello-py`. `run-js hi.js` exit 0, stdout `hello-js`. `open("/etc/passwd")` exit 0 with empty stdout and stderr `OSError: [Errno 44] ENOENT`, no `root:`. Empty file exit 0. A syntax error stayed inside the guest stderr and did not leak a host path. Missing file exit 2. `while(true){}` with `--timeout 500ms` exit 1, status `fuel_exhausted` at 63ms. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
