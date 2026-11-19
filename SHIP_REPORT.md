@@ -108,4 +108,14 @@ Evidence: bad and blank email 400 `invalid email`. `üser@example.com` 200. `{` 
 
 ---
 
+### P0-RUNS Sync run, list, get, live kill
+
+Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
+
+Matrix: logged out, empty body, malformed JSON, whitespace module, bad WAT, happy 2+2, negative fuel, unicode argv, `--allow-dir` in guest argv, `../..` directory grant, bad grant syntax, list, get, missing id, double submit, `wait: false` plus kill. N/A: browser back button, Redis. The API is bearer-authenticated JSON.
+
+Evidence: logged out 401. Empty body 400 `provide wasm_base64 or wasm_text`. `not-json` 400. Whitespace and `not wasm` stored as schema v1 `rejected`. Happy run status success, `return_value` 4. `fuel: -1` 422. Unicode argv still returns 4. Guest argv `--allow-dir /:/:rw` and dir grant `../..:/:rw` both denied `/etc/passwd` with no `root:` in stdout. Bad grant 400 before the guest. `GET` of the run id returned the same success report. Missing id 404 `run not found`. A second submit created a new id. `wait: false` returned `running` in 1ms, `POST .../kill` returned 202, and the stored report was `killed` at 58ms. A second kill was 404 `run not in flight`. No bug. Verdict PASS.
+
+---
+
 
