@@ -298,6 +298,16 @@ Evidence: `cargo test -p boxwren --test fuzz_smoke --release` ran 2 tests. `rand
 
 ---
 
+### P2-META Favicon and Open Graph
+
+Done means `/` and `/dashboard` advertise an icon and an Open Graph image, and those files are served.
+
+Matrix: icon links, Open Graph and Twitter tags, and a 200 response for each named asset. N/A: guest fuel, account login. This is document metadata.
+
+Evidence: both pages include `rel="icon"` for `/favicon.svg` and `/favicon.png`, `apple-touch-icon` for `/apple-icon.png`, `og:title`, `og:description`, `og:image` pointing at `/icon-512.png`, and `twitter:card` of `summary_large_image`. Asset responses: `/favicon.ico` 200, `/favicon.svg` 200, `/favicon.png` 200, `/apple-icon.png` 200, `/icon-512.png` 200, `/icon-192.png` 200, `/manifest.json` 200. No code change. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
