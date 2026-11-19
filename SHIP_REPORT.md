@@ -108,6 +108,16 @@ Evidence: bad and blank email 400 `invalid email`. `üser@example.com` 200. `{` 
 
 ---
 
+### P0-IDOR Cross-account run isolation
+
+Done means account B cannot read, list, or kill account A's run, including a run that is still executing.
+
+Matrix: B `GET` A's finished run, B list, anonymous `GET`, B kill of a finished run, B kill of a live run, owner kill still works. N/A: password session, Redis. Isolation is the bearer key and the SQLite `account_id` column.
+
+Evidence: B `GET` 404 `run not found` and B's list did not contain A's id. Anonymous `GET` 401. B kill of the finished run 404. B kill of a `running` background loop 404, and A's `GET` still said `running`. A's own kill returned 202 and the report was `killed`. B's `/v1/me` returned only B's email. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
