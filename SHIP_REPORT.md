@@ -88,6 +88,19 @@ Evidence: `boxwren run add.wat --entry run --report json` exit 0, `schema_versio
 
 ---
 
+### P0-CLI run, grants, demo, Ctrl-C, export-undoom
+
+Done means `run` honors a directory grant, `demo` blocks the three abuse guests, Ctrl-C kills a loop, and `export-undoom` wraps schema v1.
+
+Matrix: happy run, grant read, bad grant flag, demo exit 0, SIGINT on a loop, export-undoom document. N/A: browser refresh, Neon, Redis. This is the local binary.
+
+Evidence: `cargo test -p boxwren-cli --test cli` 7 passed in 1.77s: export return, Ctrl-C status killed exit 1, invalid grant before the module, JSON report, export-undoom wrap, guest `--allow-env` after `--` does not become a grant, demo blocks secret, network, and memory. No bug. Verdict PASS.
+
+---
+
+
+---
+
 
 ---
 
