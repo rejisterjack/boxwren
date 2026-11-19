@@ -208,6 +208,16 @@ Evidence: run `02057606-27d1-49f3-970c-9603b2a8515d` returned 7 before the stop.
 
 ---
 
+### P1-DEMO Home demo scenarios
+
+Done means the four home scenarios run through `/v1/demo` and the page shows a denied host read.
+
+Matrix: secret, loop, network, clean, kill, unknown scenario, empty body, malformed JSON, trimmed scenario name, the Host File button in the browser. N/A: account login, Redis. The demo is anonymous and rate-limited in the page process.
+
+Evidence: secret denied `/etc/passwd` with empty stdout. Loop `timed_out`. Network stdout `blocked Permission denied` and event `127.0.0.1:1` denied. Clean returned 4. Kill returned `killed`. Unknown and empty bodies 400 `unknown scenario`. `{` 400 `invalid JSON`. A trimmed `secret` still denied `/etc/passwd`. In the Cursor browser the Host File button finished with `/etc/passwd` denied and no `root:` on the page. No bug. Verdict PASS.
+
+---
+
 ### P0-RUNS Sync run, list, get, live kill
 
 Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
