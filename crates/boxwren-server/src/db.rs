@@ -253,8 +253,11 @@ impl Db {
 
     pub fn delete_account(&self, account_id: &str) -> Result<bool, String> {
         let conn = self.conn.lock().map_err(|err| err.to_string())?;
-        conn.execute("DELETE FROM runs WHERE account_id = ?1", params![account_id])
-            .map_err(|err| err.to_string())?;
+        conn.execute(
+            "DELETE FROM runs WHERE account_id = ?1",
+            params![account_id],
+        )
+        .map_err(|err| err.to_string())?;
         conn.execute(
             "DELETE FROM api_keys WHERE account_id = ?1",
             params![account_id],

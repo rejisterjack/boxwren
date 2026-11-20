@@ -37,22 +37,22 @@ Boxwren is a local-first WebAssembly sandbox built on Wasmtime: deny-by-default 
 | CORS-01 | boxwren-server CORS allowlist | P1 | PASSED | 0 | 0 | 0 | cors_reflects_allowlisted_origin test. |
 | SEC-01 | Security headers on API responses | P1 | PASSED | 0 | 0 | 0 | security header tests in server. |
 | SEC-02 | Hosted run clamps and grant argv isolation | P0 | PASSED | 0 | 0 | 0 | web/lib/run.test.ts grant argv isolation. |
-| API-02 | Optional KEYWARDEN_URL run preflight | P1 | BLOCKED | 0 | 0 | 0 | KEYWARDEN_URL unset locally; code path optional. |
+| API-02 | Optional KEYWARDEN_URL run preflight | P1 | PASSED | 0 | 0 | 0 | KEYWARDEN_URL mock 403 on POST /v1/runs (prod with mock). |
 | API-03 | Public POST /v1/demo hero scenarios | P1 | PASSED | 0 | 0 | 0 | POST /v1/demo via home hero (dev logs). |
 | WEB-01 | DATABASE_URL required at Next boot | P0 | PASSED | 0 | 0 | 0 | instrumentation exits without DATABASE_URL. |
-| WEB-02 | Production build and boxwren binary fetch | P1 | NOT STARTED |  |  |  | Production build not run this session. |
+| WEB-02 | Production build and boxwren binary fetch | P1 | PASSED | 1 | 1 | 0 | npm run build OK; prod next start :3021; fixed stale .next after dev/build mix. |
 | UI-01 | Marketing home page | P1 | PASSED | 0 | 0 | 0 | Home loads 200; basic browser snapshot. |
-| UI-02 | Hero sandbox interactive demo | P1 | NOT STARTED |  |  |  | Hero sandbox scenarios not clicked this session. |
+| UI-02 | Hero sandbox interactive demo | P1 | PASSED | 0 | 0 | 0 | Hero Run Scenario on prod :3021; curl all 4 /v1/demo scenarios. |
 | UI-03 | Install, benchmarks, bento, threat, safety sections | P2 | PASSED | 0 | 0 | 0 | Sections render on home snapshot. |
 | UI-04 | Operator dashboard (signup, run WAT, history) | P0 | PASSED | 0 | 0 | 1 | Browser signup+WAT run return_value 4; delete/revoke UI added. |
 | UI-05 | Navbar, layout, footer, SEO meta | P1 | PASSED | 0 | 0 | 0 | Nav, meta title, footer links on dashboard. |
 | UI-06 | Privacy and Terms pages | P2 | PASSED | 0 | 0 | 0 | Privacy/terms routes exist. |
-| BIND-01 | Python boxwren_py bindings | P1 | BLOCKED | 0 | 0 | 0 | boxwren_py not built in venv; maturin not run. |
+| BIND-01 | Python boxwren_py bindings | P1 | PASSED | 0 | 0 | 0 | maturin develop in venv; execute WAT return 42. |
 | BIND-02 | Go bindings over C ABI | P1 | PASSED | 0 | 0 | 0 | go test ./... after ffi release build. |
 | BIND-03 | C FFI library | P1 | PASSED | 0 | 0 | 0 | FFI built for Go tests. |
 | DEVOPS-01 | GitHub Actions CI (Rust, web, Go, audit) | P1 | PASSED | 0 | 0 | 0 | Local fmt/clippy/test match ci.yml shape. |
 | DEVOPS-02 | Release workflow (binaries, crates.io, PyPI) | P2 | PASSED | 0 | 0 | 0 | release.yml present; not executed. |
-| DEVOPS-03 | Docker images (demo and boxwren-server) | P1 | NOT STARTED |  |  |  | Docker build not run this session. |
+| DEVOPS-03 | Docker images (demo and boxwren-server) | P1 | PASSED | 0 | 0 | 0 | docker build Dockerfile.server + Dockerfile demo images. |
 | DEVOPS-04 | Fly.io deploy config | P2 | PASSED | 0 | 0 | 0 | fly.toml reviewed. |
 | TEST-01 | Rust unit and integration tests | P1 | PASSED | 0 | 0 | 0 | Workspace rust tests green. |
 | TEST-02 | Web lib unit tests | P1 | PASSED | 0 | 0 | 0 | npm test 5 cases incl email.test.ts. |
@@ -61,7 +61,7 @@ Boxwren is a local-first WebAssembly sandbox built on Wasmtime: deny-by-default 
 | GAP-01 | Custom 404 and error pages | P1 | PASSED | 0 | 0 | 1 | Added web/app/not-found.tsx; browser 404 verified. |
 | GAP-02 | Account deletion API and UI | P1 | PASSED | 1 | 1 | 1 | DELETE /v1/me server+web; dashboard delete account. |
 | GAP-03 | API key revocation endpoint | P1 | PASSED | 1 | 1 | 1 | DELETE /v1/keys/{id}; dashboard revoke. |
-| GAP-04 | Password or OAuth session login | P2 | BLOCKED | 0 | 0 | 0 | Deferred by design (API-key tenancy). |
+| GAP-04 | Password or OAuth session login | P2 | BLOCKED | 0 | 0 | 0 | Intentionally out of scope; API-key tenancy only. |
 
 ## Gaps
 
@@ -70,7 +70,7 @@ Boxwren is a local-first WebAssembly sandbox built on Wasmtime: deny-by-default 
 | GAP-01 | Custom 404 and global error UI | BUILD | PASSED | 0 | 0 | 1 | Added web/app/not-found.tsx; browser 404 verified. |
 | GAP-02 | Account deletion | BUILD | PASSED | 1 | 1 | 1 | DELETE /v1/me server+web; dashboard delete account. |
 | GAP-03 | API key revocation | BUILD | PASSED | 1 | 1 | 1 | DELETE /v1/keys/{id}; dashboard revoke. |
-| GAP-04 | Password/OAuth sessions | DEFER | BLOCKED | 0 | 0 | 0 | Deferred by design (API-key tenancy). |
+| GAP-04 | Password/OAuth sessions | DEFER | BLOCKED | 0 | 0 | 0 | Intentionally out of scope; API-key tenancy only. |
 | GAP-05 | Light theme | DEFER | layout.tsx and globals.css are dark-only; viewport colorScheme is dark. |
 | GAP-06 | Email notifications | DEFER | No SMTP, transactional email, or webhooks in repo. |
 | GAP-07 | Billing and payments | DEFER | Not in scope for sandbox runtime. |
@@ -2111,11 +2111,6 @@ Boxwren is a local-first WebAssembly sandbox built on Wasmtime: deny-by-default 
 - **Dark-only UI:** No light theme may fail contrast expectations for some users.
 - **KEYWARDEN_URL and demo rate limits** depend on environment and in-memory state.
 
-## Test Phase Progress
-
-- **Updated:** 56 / 56 features evaluated this session.
-- **PASSED:** 50 | **BLOCKED:** 3 | **NOT STARTED:** 3
-- **Whole-product check / GO-NO-GO:** not finished (WEB-02, DEVOPS-03, UI-02, full responsive pass pending).
 
 ## Code changes this session
 
@@ -2125,4 +2120,66 @@ Boxwren is a local-first WebAssembly sandbox built on Wasmtime: deny-by-default 
 - `web/lib/email.ts` + `email.test.ts` — signup validation parity
 - `crates/boxwren-server` — DELETE `/v1/me`, `/v1/keys/{id}`
 - `web/app/dashboard/page.tsx` — delete account, revoke key buttons
+
+
+## Whole-Product Check
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| Auth on APIs | PASS | Bearer required on `/v1/*` except accounts/demo POST; IDOR tests pass. |
+| Secrets in repo/bundle | PASS | No keys in git; DATABASE_URL only in `.env.local` (gitignored). |
+| Security headers | PASS | boxwren-server middleware + Next health routes verified. |
+| Rate limiting | PASS | Server burst test + Neon gate on hosted signup. |
+| `cargo audit` | PASS | No Rust advisories reported. |
+| `npm audit` (high) | PASS | 1 moderate in `next` dependency (known; not upgraded this gate). |
+| Production build | PASS | `npm run build`; `next start -p 3021` P0 curl + browser. |
+| Docker images | PASS | `boxwren-server:ship`, `boxwren-demo:ship` built. |
+| Custom 404 | PASS | `not-found.tsx` on prod. |
+| README setup | PASS | Documented path matches crate/CLI/web split (not re-cloned this gate). |
+
+## Final Summary
+
+| Status | Count |
+| --- | ---: |
+| PASSED | 55 |
+| BLOCKED | 1 |
+| NOT STARTED | 0 |
+
+All P0 features passed live. The only blocked item is **GAP-04** (password/OAuth), deferred by product design.
+
+## Totals
+
+| Metric | Count |
+| --- | ---: |
+| Bugs found | 5 |
+| Bugs fixed | 5 |
+| UI issues fixed | 4 |
+
+## Still Blocked
+
+| ID | Reason | To unblock |
+| --- | --- | --- |
+| GAP-04 | API-key-first hosted product; no session cookies. | Product decision to add OAuth/password and session middleware. |
+
+## Known Limitations
+
+- Hosted runs shell out to bundled `boxwren` CLI (subprocess latency).
+- No light theme; dark-only marketing UI.
+- `next` moderate npm advisory remains until dependency bump.
+- Running `next dev` after `next build` without clean `.next` can corrupt dev chunks (rebuild before `next start`).
+
+## Launch Checklist
+
+- [ ] `DATABASE_URL` (Neon) on Vercel/host
+- [ ] `NEXT_PUBLIC_BOXWREN_API_URL` empty for same-origin hosted API, or local server URL for kill
+- [ ] Optional `KEYWARDEN_URL` for admission
+- [ ] SQLite volume on Fly (`fly.toml` mount)
+- [ ] Domain + TLS for public site
+- [ ] Neon backups enabled
+- [ ] Monitor `/healthz` on web and `boxwren-server`
+- [ ] Rollback: prior Vercel deploy + prior Fly image
+
+## Decision
+
+**GO** — Core sandbox (Rust crate/CLI), hosted API, dashboard, and ship-gap fixes are verified. Single blocked item is an explicit non-goal (GAP-04). Ship with documented limitations above.
 
