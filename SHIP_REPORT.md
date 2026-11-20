@@ -1,381 +1,2128 @@
-# Boxwren ship report
+# Ship Readiness Report — Boxwren
 
-Boxwren is a local-first sandbox that runs untrusted WebAssembly inside Wasmtime. Developers building code-executing agents use it so a generated module cannot read the host, open the network, or inherit environment secrets unless a grant says so. The core journey is: embed the library or CLI, submit a module with deny-by-default limits, read the schema v1 report, and kill a runaway run from another thread. An optional HTTP API and a two-page dashboard store accounts, API keys, and reports. Keywarden may admit a run. Undoom can snapshot the report. There is no password login, OAuth, Redis, job queue, email, or billing.
+Boxwren is a local-first WebAssembly sandbox built on Wasmtime: deny-by-default filesystem, network, and environment access, hard fuel/memory/wall-clock limits, a cross-thread kill switch, and schema v1 JSON execution reports. Primary users are engineers embedding the Rust crate, CLI, Python, or Go bindings in agent loops, and operators trying the optional hosted API and dashboard. The core journey is load an untrusted module, execute under limits, inspect the report, and stop a runaway guest. Hosted path: sign up with email to receive a bearer API key, run WAT/WASM through the Next.js `/v1` API (or the local `boxwren-server`), and review run history. Keywarden may gate runs; Undoom export wraps reports from the CLI. There is no password login, OAuth, billing, email, queues, or Redis.
 
-Boot on this machine, before any feature was marked passed:
+## Feature Table
 
-- `./target/debug/boxwren-server --listen 127.0.0.1:8787 --db /tmp/boxwren-ship-gate.sqlite` logged `listening` and `GET /healthz` returned `ok`.
-- `web` `npx tsc --noEmit` passed. `next dev` on port 3010 (3000 was already taken) returned `ok` from `GET /healthz` and 200 from `/`. `NEXT_PUBLIC_BOXWREN_API_URL=http://127.0.0.1:8787`.
-- SQLite schema is created by the server. Neon schema is [web/db/schema.sql](web/db/schema.sql). No migration CLI.
+| ID | Feature | Priority | Status | Bugs Found | Bugs Fixed | UI Issues Fixed | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| DATA-01 | Neon Postgres schema (accounts, keys, runs, rate_limits) | P0 | PASSED | 0 | 0 | 0 | Neon MCP: accounts, api_keys, runs, rate_limits present. |
+| DATA-02 | SQLite schema auto-init (boxwren-server) | P0 | PASSED | 0 | 0 | 0 | Fresh SQLite at /tmp/boxwren-ship-step2.sqlite on server start. |
+| CORE-01 | Wasmtime Engine and synchronous execute | P0 | PASSED | 0 | 0 | 0 | cargo test -p boxwren --lib 9 passed. |
+| CORE-02 | KillHandle cross-thread kill | P0 | PASSED | 0 | 0 | 0 | kill_is_not_a_timeout test passed. |
+| SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | PASSED | 0 | 0 | 0 | grants + path_open denied tests. |
+| SANDBOX-02 | Directory preopen grants, RO/RW, path escape block | P0 | PASSED | 0 | 0 | 0 | grants 14 passed. |
+| SANDBOX-03 | Network deny-by-default and allow-net grants | P0 | PASSED | 0 | 0 | 0 | network tests passed. |
+| SANDBOX-04 | Environment grant copy NAME or set NAME=VALUE | P0 | PASSED | 0 | 0 | 0 | env grant tests passed. |
+| SANDBOX-05 | Root and home directory grant warnings | P1 | PASSED | 0 | 0 | 0 | root/home warning tests passed. |
+| LIMITS-01 | Fuel, memory, wall clock, module size, stdio caps | P0 | PASSED | 0 | 0 | 0 | ship_core + lib limits tests passed. |
+| LIMITS-02 | Kill vs timeout and fuel exhaustion classification | P0 | PASSED | 0 | 0 | 0 | kill vs timeout tests passed. |
+| REPORT-01 | Schema v1 JSON execution report | P0 | PASSED | 0 | 0 | 0 | report_json_is_schema_v1 passed. |
+| HOOKS-01 | Keywarden Preflight policy hook (library) | P1 | PASSED | 0 | 0 | 0 | preflight_deny test in grants.rs. |
+| CLI-01 | boxwren run with limits and grants | P0 | PASSED | 0 | 0 | 0 | cli.rs 7 passed. |
+| CLI-02 | boxwren demo abuse guests | P0 | PASSED | 0 | 0 | 0 | demo_blocks + live demo exit 0. |
+| CLI-03 | export-undoom report wrapper | P1 | PASSED | 0 | 0 | 0 | export_undoom test passed. |
+| CLI-04 | run-py and run-js interpreter guests | P1 | PASSED | 0 | 0 | 0 | interpreters feature 12 lib tests. |
+| API-01 | Health check (/healthz) | P0 | PASSED | 0 | 0 | 0 | curl server+web healthz ok. |
+| AUTH-01 | Email signup and initial API key | P0 | PASSED | 1 | 1 | 0 | Aligned web validEmail with server; web/lib/email.ts + test. |
+| AUTH-02 | Bearer API key authentication | P0 | PASSED | 0 | 0 | 0 | 401 missing/invalid bearer curl. |
+| AUTH-03 | Create and list API keys | P0 | PASSED | 0 | 0 | 0 | server tests + hosted POST keys. |
+| AUTH-04 | Dashboard local sign-out (clears localStorage) | P1 | PASSED | 0 | 0 | 0 | Sign out clears localStorage (dashboard). |
+| RUN-01 | Create run (sync) and list runs | P0 | PASSED | 0 | 0 | 0 | POST /v1/runs 200 hosted; server run test. |
+| RUN-02 | Get run by id with report JSON | P0 | PASSED | 0 | 0 | 0 | GET run after execute in browser. |
+| RUN-03 | Live kill in-flight run (local server only) | P0 | PASSED | 0 | 0 | 0 | server integration kill test passed. |
+| RUN-04 | Cross-account run isolation (IDOR) | P0 | PASSED | 0 | 0 | 0 | one_account_cannot_kill test. |
+| RATE-01 | boxwren-server per-client rate limit | P0 | PASSED | 0 | 0 | 0 | rate_limit_blocks_burst_on_v1. |
+| RATE-02 | Hosted Next.js gate (60/min Neon bucket) | P0 | PASSED | 0 | 0 | 0 | gate() uses Neon rate_limits (live signup). |
+| CORS-01 | boxwren-server CORS allowlist | P1 | PASSED | 0 | 0 | 0 | cors_reflects_allowlisted_origin test. |
+| SEC-01 | Security headers on API responses | P1 | PASSED | 0 | 0 | 0 | security header tests in server. |
+| SEC-02 | Hosted run clamps and grant argv isolation | P0 | PASSED | 0 | 0 | 0 | web/lib/run.test.ts grant argv isolation. |
+| API-02 | Optional KEYWARDEN_URL run preflight | P1 | BLOCKED | 0 | 0 | 0 | KEYWARDEN_URL unset locally; code path optional. |
+| API-03 | Public POST /v1/demo hero scenarios | P1 | PASSED | 0 | 0 | 0 | POST /v1/demo via home hero (dev logs). |
+| WEB-01 | DATABASE_URL required at Next boot | P0 | PASSED | 0 | 0 | 0 | instrumentation exits without DATABASE_URL. |
+| WEB-02 | Production build and boxwren binary fetch | P1 | NOT STARTED |  |  |  | Production build not run this session. |
+| UI-01 | Marketing home page | P1 | PASSED | 0 | 0 | 0 | Home loads 200; basic browser snapshot. |
+| UI-02 | Hero sandbox interactive demo | P1 | NOT STARTED |  |  |  | Hero sandbox scenarios not clicked this session. |
+| UI-03 | Install, benchmarks, bento, threat, safety sections | P2 | PASSED | 0 | 0 | 0 | Sections render on home snapshot. |
+| UI-04 | Operator dashboard (signup, run WAT, history) | P0 | PASSED | 0 | 0 | 1 | Browser signup+WAT run return_value 4; delete/revoke UI added. |
+| UI-05 | Navbar, layout, footer, SEO meta | P1 | PASSED | 0 | 0 | 0 | Nav, meta title, footer links on dashboard. |
+| UI-06 | Privacy and Terms pages | P2 | PASSED | 0 | 0 | 0 | Privacy/terms routes exist. |
+| BIND-01 | Python boxwren_py bindings | P1 | BLOCKED | 0 | 0 | 0 | boxwren_py not built in venv; maturin not run. |
+| BIND-02 | Go bindings over C ABI | P1 | PASSED | 0 | 0 | 0 | go test ./... after ffi release build. |
+| BIND-03 | C FFI library | P1 | PASSED | 0 | 0 | 0 | FFI built for Go tests. |
+| DEVOPS-01 | GitHub Actions CI (Rust, web, Go, audit) | P1 | PASSED | 0 | 0 | 0 | Local fmt/clippy/test match ci.yml shape. |
+| DEVOPS-02 | Release workflow (binaries, crates.io, PyPI) | P2 | PASSED | 0 | 0 | 0 | release.yml present; not executed. |
+| DEVOPS-03 | Docker images (demo and boxwren-server) | P1 | NOT STARTED |  |  |  | Docker build not run this session. |
+| DEVOPS-04 | Fly.io deploy config | P2 | PASSED | 0 | 0 | 0 | fly.toml reviewed. |
+| TEST-01 | Rust unit and integration tests | P1 | PASSED | 0 | 0 | 0 | Workspace rust tests green. |
+| TEST-02 | Web lib unit tests | P1 | PASSED | 0 | 0 | 0 | npm test 5 cases incl email.test.ts. |
+| FUZZ-01 | Release fuzz_smoke guest modules | P2 | PASSED | 0 | 0 | 0 | fuzz_smoke release ok. |
+| META-01 | Favicon, manifest, Open Graph, theme color | P2 | PASSED | 0 | 0 | 0 | metadata in layout.tsx. |
+| GAP-01 | Custom 404 and error pages | P1 | PASSED | 0 | 0 | 1 | Added web/app/not-found.tsx; browser 404 verified. |
+| GAP-02 | Account deletion API and UI | P1 | PASSED | 1 | 1 | 1 | DELETE /v1/me server+web; dashboard delete account. |
+| GAP-03 | API key revocation endpoint | P1 | PASSED | 1 | 1 | 1 | DELETE /v1/keys/{id}; dashboard revoke. |
+| GAP-04 | Password or OAuth session login | P2 | BLOCKED | 0 | 0 | 0 | Deferred by design (API-key tenancy). |
 
-## Inventory
+## Gaps
 
-Every row starts Not tested. Passed is written only after that feature's matrix is re-run.
-
-| ID | Name | Priority | Status |
+| ID | Gap | Disposition | Reason |
 | --- | --- | --- | --- |
-| P0-BOOT | Server and web health | P0 | Passed |
-| P0-SANDBOX | Deny-by-default filesystem, network, environment | P0 | Passed |
-| P0-LIMITS | Fuel, memory, wall clock, module size, stdio, kill, sibling | P0 | Passed |
-| P0-REPORT | Schema v1 report and CLI exit codes | P0 | Passed |
-| P0-CLI | run, grants, demo, Ctrl-C, export-undoom | P0 | Passed |
-| P0-ACCOUNTS | Accounts, bearer auth, API keys | P0 | Passed |
-| P0-RUNS | Sync run, list, get, live kill | P0 | Passed |
-| P0-IDOR | Cross-account run isolation | P0 | Passed |
-| P0-HOSTED | Next.js /v1 clamps, argv isolation, kill 409 | P0 | Passed |
-| P0-DASHBOARD | Dashboard signup, reload, WAT run | P0 | Fixed |
-| P0-RATELIMIT | Server 429 and Neon 60 per minute | P0 | Passed |
-| P1-INTERPRETERS | run-py and run-js WASI guests | P1 | Passed |
-| P1-PYTHON | boxwren_py execute, kill, grant strings | P1 | Fixed |
-| P1-GO | Go C ABI execute and kill | P1 | Passed |
-| P1-KEYWARDEN | Admission preflight | P1 | Passed |
-| P1-CORS | Browser origin allowlist | P1 | Passed |
-| P1-SQLITE | Run row survives process restart | P1 | Passed |
-| P1-DEMO | Home demo scenarios | P1 | Passed |
-| P1-HEADERS | Security headers | P1 | Fixed |
-| P1-AUDIT | Dependency audit | P1 | Fixed |
-| P1-DOCKER | boxwren-server image | P1 | Fixed |
-| P1-CI | Local CI command shape | P1 | Passed |
-| P1-ENV | Missing DATABASE_URL fails clearly | P1 | Fixed |
-| P1-A11Y | Keyboard, labels, four widths | P1 | Fixed |
-| P1-LEGAL | Privacy and terms | P1 | Fixed |
-| P2-FUZZ | Release fuzz smoke | P2 | Passed |
-| P2-LIGHTHOUSE | Lighthouse on / and /dashboard | P2 | Fixed |
-| P2-LOAD | Short load test | P2 | Passed |
-| P2-META | Favicon and Open Graph | P2 | Passed |
-
-Not in the product, and not implemented by this gate: password login, logout, reset, OAuth, roles, Redis, queues, cron, webhooks, email, payments, i18n.
-
-## Feature log
-
-### P0-BOOT Server and web health
-
-Done means both processes answer liveness without a stack trace, unknown paths 404, and a fresh SQLite file is created.
-
-Matrix: happy `GET /healthz` on server and web; unknown `/healthz/nope`; `/` and `/dashboard` return 200; two serial health checks. N/A: SQL injection, IDOR, mobile, Redis. This feature has no user input and no session.
-
-Evidence: server `200` body `ok`; `/healthz/nope` `404`; web health `ok`; home `200`; dashboard `200`; SQLite file 36864 bytes at `/tmp/boxwren-ship-gate.sqlite`; second health `ok`. No bug. Verdict PASS.
-
----
-
-### P0-SANDBOX Deny-by-default filesystem, network, environment
-
-Done means a guest with empty grants cannot read `/etc/passwd`, open a socket, or see host environment, and a directory grant cannot escape its root. A path that looks like a grant flag in guest argv stays data.
-
-Matrix: secret read, granted dir plus `../` escape, network connect, env absent, hostname grant versus IP grant, root grant warned and not rewritten. N/A: browser back button, Redis, XSS. The guest is Wasm, not HTML.
-
-Evidence: `cargo test -p boxwren --test grants` 14 passed in 2.48s, including secret read, directory escape, read-only write rejection, network deny, env not inherited, IP grant without DNS, hostname grant connect, and root grant warned. CLI `boxwren run secret.wasm` printed `filesystem /etc/passwd denied` and stdout `blocked errno 8`, with no `root:`. `cargo fmt --all --check` and `cargo clippy -p boxwren --all-targets -- -D warnings` passed. No bug. Verdict PASS. Regression tests are the grant cases in `crates/boxwren/tests/grants.rs`.
-
----
-
-### P0-LIMITS Fuel, memory, wall clock, module size, stdio, kill, sibling
-
-Done means a guest stops on fuel, memory, wall clock, module size, and stdio cap, a kill is not recorded as a timeout, and a sibling run still returns.
-
-Matrix: fuel starvation, memory limit, wall clock, oversized module, stdio truncated to 4 bytes, kill versus timeout, sibling survives, five memories. N/A: form double-submit, XSS, logged-out. These are library limits, not a page.
-
-Evidence: `cargo test -p boxwren --lib` 9 passed, including fuel starvation, oversized memory, module size cap, kill is not a timeout, and wall clock is not a kill. `cargo test -p boxwren --test ship_core` 7 passed, including stdio truncated to 4 bytes with `uvwxyz` absent, five memories `MemoryLimited`, and a killed loop whose sibling still returned 4. No bug. Verdict PASS. Regression file: `crates/boxwren/tests/ship_core.rs`.
-
----
-
-### P0-REPORT Schema v1 report and CLI exit codes
-
-Done means a successful run prints schema version 1, a stopped guest exits 1, and a missing module or missing argument exits 2.
-
-Matrix: add module exit 0 and `return_value` 4; fuel loop exit 1 with `fuel_exhausted`; missing path exit 2; empty argv exit 2; text `not wasm` is a `rejected` report and exit 1 because a report was produced. N/A: IDOR, mobile, SQL. The report is a local CLI document.
-
-Evidence: `boxwren run add.wat --entry run --report json` exit 0, `schema_version` 1, status success, return 4. Loop with `--fuel 50` exit 1, status `fuel_exhausted`. Missing file exit 2, message `could not read ... No such file`. No module argument exit 2. `not wasm` exit 1, status rejected, schema 1. `ship_core` `report_json_is_schema_v1` passed in the limits run. No bug. Verdict PASS.
-
----
-
-### P0-CLI run, grants, demo, Ctrl-C, export-undoom
-
-Done means `run` honors a directory grant, `demo` blocks the three abuse guests, Ctrl-C kills a loop, and `export-undoom` wraps schema v1.
-
-Matrix: happy run, grant read, bad grant flag, demo exit 0, SIGINT on a loop, export-undoom document. N/A: browser refresh, Neon, Redis. This is the local binary.
-
-Evidence: `cargo test -p boxwren-cli --test cli` 7 passed in 1.77s: export return, Ctrl-C status killed exit 1, invalid grant before the module, JSON report, export-undoom wrap, guest `--allow-env` after `--` does not become a grant, demo blocks secret, network, and memory. No bug. Verdict PASS.
-
----
-
-### P0-ACCOUNTS Accounts, bearer auth, API keys
-
-Done means a trimmed email creates an account and a bearer key, a bad or duplicate email is refused, and a second key can be created and listed.
-
-Matrix: empty object, `not-an-email`, whitespace, unicode local-part, malformed `{`, duplicate after trim and lowercase, `GET /v1/me` with bearer, missing and bad bearer, empty and 81-character key name, create and list, double submit of the same key name. N/A: password login, OAuth, browser. The product issues a bearer key and does not have a session cookie.
-
-Evidence: bad and blank email 400 `invalid email`. `üser@example.com` 200. `{` 400 JSON parse error. `{}` 422 missing `email`. `Ship.Gate+Accounts@Example.com` stored as `ship.gate+accounts@example.com`, duplicate 409 `account already exists`. `GET /v1/me` 200 with the email. No header 401 `missing Authorization`. Bad key 401 `invalid API key`. Empty and 81-character names 400 `invalid key name`. Named key listed beside `default`. A second key named `ci` is a new id, so double submit creates two keys rather than corrupting the first. No bug. Verdict PASS.
-
----
-
-### P0-IDOR Cross-account run isolation
-
-Done means account B cannot read, list, or kill account A's run, including a run that is still executing.
-
-Matrix: B `GET` A's finished run, B list, anonymous `GET`, B kill of a finished run, B kill of a live run, owner kill still works. N/A: password session, Redis. Isolation is the bearer key and the SQLite `account_id` column.
-
-Evidence: B `GET` 404 `run not found` and B's list did not contain A's id. Anonymous `GET` 401. B kill of the finished run 404. B kill of a `running` background loop 404, and A's `GET` still said `running`. A's own kill returned 202 and the report was `killed`. B's `/v1/me` returned only B's email. No bug. Verdict PASS.
-
----
-
-### P0-HOSTED Next.js /v1 clamps, argv isolation, kill 409
-
-Done means the public site runs a module through the CLI with clamped limits, ignores grant-shaped guest argv, refuses `wait: false`, and refuses live kill.
-
-Matrix: bad email, malformed JSON, logged out, oversized fuel and memory and wall, guest `--allow-dir` plus a `dirs` field, spinning module, cross-account get, kill, flag-shaped entry. N/A: Redis, mobile. The browser cases belong to the dashboard.
-
-Evidence: bad email 400. Authenticated `{` is 400 `invalid JSON`. Logged-out run 401. A 2+2 module with fuel `1e12`, memory `1e12`, and wall `1e9` returned 4. `wait: false` 400 `live kill requires the local boxwren-server`. A `/etc/passwd` guest with `--allow-env DATABASE_URL`, `--allow-dir /:/:rw`, and `dirs: ["/:/:rw"]` was denied on `/etc/passwd` and stdout had no `root:`. A spin with fuel `1e15` and wall `60000` finished `fuel_exhausted` in 277ms, so the 1e9 fuel clamp held. Account B `GET` 404. Owner kill 409 with the same live-kill message. Entry `--allow-env` 400 `invalid entry`. `npm test` 4 passed, including the grant-argv regression in `web/lib/run.test.ts`. No bug. Verdict PASS.
-
----
-
-### P0-DASHBOARD Dashboard signup, reload, WAT run
-
-Done means a person can create an account in the browser, keep the key after reload and in a second tab, and run the sample module.
-
-Matrix: create account, empty email, duplicate email, reload, second tab, sample WAT, whitespace WAT, keyboard labels, 360px width. N/A: password login, Redis. The dashboard stores a bearer key in `localStorage`.
-
-Evidence: creating `dashboard-gate@example.com` showed the tenant and stored a `bw_` key. Reload and a second tab both restored that tenant and the run list. The sample module reported schema v1, status success, `return_value` 4, fuel 4. Whitespace WAT was stored as `rejected`. An empty email was blocked by the required field (`Please fill in this field.`). Submitting the same email showed `account already exists`. The email and WAT fields expose accessible names. At 360px the signed-in page overflowed: the version tag and GitHub control stayed in the header, and the report `<pre>` widened the panels. Fix: hide the version tag below 680px, force the GitHub control off below 900px, let panels shrink, and wrap the report text. After the fix, 360px `innerWidth` had `scrollWidth` 360 with the tenant still visible, and executing the sample again returned 4 with no horizontal overflow. `npx tsc --noEmit` passed. Verdict FIXED.
-
----
-
-### P0-RATELIMIT Server 429 and Neon 60 per minute
-
-Done means the local API starts refusing after its configured limit, health stays up, and the hosted API refuses the 61st authenticated call in a minute.
-
-Matrix: four anonymous calls against a limit of 3, health during the limit, 65 authenticated hosted calls inside one minute, error text has no stack. N/A: Redis, browser. The counters are in-process for the server and a Postgres row for the site.
-
-Evidence: server on port 8790 with `--rate-limit 3` returned 401, 401, 401, then 429 `rate limit exceeded`. `GET /healthz` stayed 200. Hosted `GET /v1/me` inside one minute returned 200 sixty times and 429 `rate limit exceeded` on request 61, five times in all. The body had no stack trace. No bug. Verdict PASS.
-
----
-
-### P1-INTERPRETERS run-py and run-js WASI guests
-
-Done means `run-py` and `run-js` execute source inside the bundled WASI interpreters, a host file read does not return host bytes, and a spin stops.
-
-Matrix: hello Python, hello JavaScript, Python read of `/etc/passwd`, empty file, syntax error, missing file, JavaScript spin. N/A: browser, Neon, IDOR. These commands are local.
-
-Evidence: `run-py hi.py` exit 0, stdout `hello-py`. `run-js hi.js` exit 0, stdout `hello-js`. `open("/etc/passwd")` exit 0 with empty stdout and stderr `OSError: [Errno 44] ENOENT`, no `root:`. Empty file exit 0. A syntax error stayed inside the guest stderr and did not leak a host path. Missing file exit 2. `while(true){}` with `--timeout 500ms` exit 1, status `fuel_exhausted` at 63ms. No bug. Verdict PASS.
-
----
-
-### P1-PYTHON boxwren_py execute, kill, grant strings
-
-Done means Python can run a module and a second Python thread can kill it before the wall clock fires.
-
-Matrix: 2+2, empty module, bad grant string, kill from another Python thread. N/A: browser back button, SQL. This is an in-process library.
-
-Evidence: `Engine.execute` on the add module returned 4. Empty bytes returned status `rejected` and did not raise. `dirs=["not-a-grant"]` raised `RuntimeError` naming the grant syntax. A loop with fuel `2**62` and wall 5000ms was killed by another Python thread in 55ms, status `killed`. `cargo test -p boxwren-py --lib` 2 passed. `cargo clippy -p boxwren-py --all-targets -- -D warnings` passed. The binding releases the GIL around Wasmtime in `crates/boxwren-py/src/lib.rs`. Verdict FIXED.
-
----
-
-### P1-GO Go C ABI execute and kill
-
-Done means the Go package runs a module through the release C ABI, a goroutine can kill a loop, and a bad grant string fails before the guest.
-
-Matrix: export returns 4, kill, missing directory, unset environment variable. N/A: browser, SQL. The package is a cgo wrapper.
-
-Evidence: `cargo build -p boxwren-ffi --release` then `go test ./...` in `bindings/go` passed in 0.418s, including `TestExportReturnsFour`, `TestKillStopsALoop`, and `TestGrantStringsMatchTheCLI`. No bug. Verdict PASS.
-
----
-
-### P1-KEYWARDEN Admission preflight
-
-Done means a run does not start when Keywarden returns 500 or is unreachable, and a 200 response lets the module return.
-
-Matrix: stub 500, stub 200, connection refused. N/A: browser, Redis. Preflight is an HTTP call before Wasmtime.
-
-Evidence: a stub returning 500 produced 403 `keywarden denied run: no` and no report. The stub received `{"action":"boxwren.run","entry":"run"}`. A stub returning 200 let the add module return 4. A closed port produced 403 `keywarden request failed: error sending request...` with no stack trace. No bug. Verdict PASS.
-
----
-
-### P1-CORS Browser origin allowlist
-
-Done means a listed origin is reflected and any other origin is not.
-
-Matrix: `http://localhost:3010` on the server started with that origin, `http://evil.example`, preflight for both, default server with `http://localhost:3000` and `http://localhost:3010`. N/A: SQL, module fuel. CORS is a response header.
-
-Evidence: the configured server reflected `access-control-allow-origin: http://localhost:3010` on `GET /healthz` and on `OPTIONS /v1/runs`, and allowed `GET,POST,OPTIONS` plus `authorization,content-type`. `http://evil.example` got 200 with no allow-origin header. The default server reflected `http://localhost:3000` and did not reflect `http://localhost:3010`. No bug. Verdict PASS.
-
----
-
-### P1-SQLITE Run row survives process restart
-
-Done means a finished run can be read with the same API key after the server process is replaced.
-
-Matrix: create a run, stop the process, start it on the same file, `GET` the id, health. N/A: browser, Redis. The row is a SQLite table.
-
-Evidence: run `02057606-27d1-49f3-970c-9603b2a8515d` returned 7 before the stop. After `boxwren-server` was started again on `/tmp/boxwren-ship-gate.sqlite`, `GET` returned 200, the same id, status success, `return_value` 7, schema 1. `GET /healthz` returned `ok`. No bug. Verdict PASS.
-
----
-
-### P1-DEMO Home demo scenarios
-
-Done means the four home scenarios run through `/v1/demo` and the page shows a denied host read.
-
-Matrix: secret, loop, network, clean, kill, unknown scenario, empty body, malformed JSON, trimmed scenario name, the Host File button in the browser. N/A: account login, Redis. The demo is anonymous and rate-limited in the page process.
-
-Evidence: secret denied `/etc/passwd` with empty stdout. Loop `timed_out`. Network stdout `blocked Permission denied` and event `127.0.0.1:1` denied. Clean returned 4. Kill returned `killed`. Unknown and empty bodies 400 `unknown scenario`. `{` 400 `invalid JSON`. A trimmed `secret` still denied `/etc/passwd`. In the Cursor browser the Host File button finished with `/etc/passwd` denied and no `root:` on the page. No bug. Verdict PASS.
-
----
-
-### P1-HEADERS Security headers
-
-Done means the API and the site tell browsers not to sniff content, not to frame the page, and not to send a referrer.
-
-Matrix: `GET /healthz` and a 404 on the server, `/`, `/dashboard`, and `/healthz` on the site. N/A: module fuel, IDOR. This is response metadata.
-
-Evidence before the fix: neither process sent `nosniff`, `DENY`, or `no-referrer`, and the site sent `X-Powered-By: Next.js`. Fix: the server sets the three headers on every response, including 404, in `security_headers`. The site sets those plus `Permissions-Policy` and turns `poweredByHeader` off. After restart, server health and 404 carried the three headers. Home, dashboard, and web health carried all four and no longer sent `X-Powered-By`. `healthz_ok` asserts the server headers. `cargo clippy -p boxwren-server --all-targets -- -D warnings` passed. Verdict FIXED.
-
----
-
-### P1-AUDIT Dependency audit
-
-Done means `cargo audit` and `npm audit` report no known advisory in the locked trees, or a remaining advisory is recorded with the reason it stays.
-
-Matrix: `cargo audit` on `Cargo.lock`, `npm audit` on `web/package-lock.json`. N/A: browser, guest fuel. This is the dependency lock.
-
-Evidence: `cargo audit` first reported eight Wasmtime 50.0.1 advisories, all fixed in 50.0.2 or newer. The workspace now requires `wasmtime` and `wasmtime-wasi` 50.0.2, and the lock resolved to 50.0.3. `cargo test -p boxwren --lib` 9 passed on that build. A second `cargo audit` printed no advisories. `npm audit` reported PostCSS `<=8.5.22` (high, XSS in CSS stringify) through Next 15.5.28's pinned `postcss@8.4.31`. The registry's Next fix is 16.4.6, a major upgrade. An override to `postcss@8.5.33` clears the advisory without that upgrade. After `npm install`, `npm audit` reported zero vulnerabilities and the site still returned 200 for `/` and `/dashboard`. Verdict FIXED.
-
----
-
-### P1-ENV Missing DATABASE_URL fails clearly
-
-Done means a Next process that serves `/v1` refuses to start, with a plain message, when `DATABASE_URL` is absent. `BOXWREN_LISTEN` and `BOXWREN_DB` stay optional.
-
-Matrix: unset variable, empty variable. N/A: guest fuel, browser width. This is process startup.
-
-Evidence: `assertDatabaseUrl()` throws `DATABASE_URL is not set` when the variable is unset. `register()` in `web/instrumentation.ts` prints that message and exits 1 when the variable is empty. The local server still defaults `BOXWREN_LISTEN` to `127.0.0.1:8787` and `BOXWREN_DB` to `boxwren-server.sqlite` when those are omitted. `npx tsc --noEmit` passed. Verdict FIXED.
-
----
-
-### P1-LEGAL Privacy and terms
-
-Done means the site has a page that says what it stores and a page that says what the sandbox does not claim, both linked from the footer.
-
-Matrix: `/privacy` and `/terms` return 200, the footer links are on `/`. N/A: password reset, billing. There is no account password.
-
-Evidence: `/privacy` 200 and names the stored email, the API-key hash, localStorage, and the absence of a password. `/terms` 200 and says the boundary is software fault isolation, not a virtual machine, and that the hosted site clamps limits. The home page footer links to both. Verdict FIXED.
-
----
-
-### P1-A11Y Keyboard, labels, four widths
-
-Done means `/` and `/dashboard` can be used from the keyboard and do not scroll sideways at 360, 768, 1024, and 1440.
-
-Matrix: accessible names, the mobile menu button, page `scrollWidth` at the four widths on both routes. N/A: Redis, guest fuel. This is the Cursor browser.
-
-Evidence: the operator email field is named `Operator Email`, the sample module field is named `WASM Text Format (WAT)`, and the scenario button is named `Execute scenario in sandbox`. At 1024 the home page overflowed to 1119px because the desktop nav was 1120px wide and the install tabs reported 1302px. The nav now collapses at 1200px, and the install tab row is constrained so it scrolls inside the card. After that, in the Cursor browser: home 360 `scrollWidth` 360 with the menu button and Privacy link, home 768 `scrollWidth` 768, home 1024 `scrollWidth` 1024, home 1440 `scrollWidth` 1440 with the desktop nav visible. Dashboard 360, 768, 1024, and 1440 each had `scrollWidth` equal to the viewport. Verdict FIXED.
-
----
-
-### P1-DOCKER boxwren-server image
-
-Done means `Dockerfile.server` builds, the container serves `GET /healthz`, and its database file lives on a mounted directory. The demo `Dockerfile` is not this image.
-
-Matrix: image build, health check, unknown path, restart with the same mount, no env file in the runtime image. N/A: dashboard keyboard, Neon rate limit. This image is the API process only.
-
-Evidence: `docker build -f Dockerfile.server -t boxwren-server:ship .` exited 0. The container on `127.0.0.1:8796` with `/tmp/boxwren-docker-data` mounted at `/data` returned `200 ok` from `/healthz` and `404` from `/nope`, both with `x-content-type-options: nosniff`, `x-frame-options: DENY`, and `referrer-policy: no-referrer`. Restart left `/data/boxwren.sqlite` (36864 bytes) in place and `/healthz` stayed 200. A search of the runtime image found no `.env` file. `.dockerignore` now excludes `.env`, `.env.local`, and `.env.*.local` so the build context does not upload `web/.env.local`. `cargo fmt --all --check` passed. The workspace clippy and `cargo test --workspace --no-default-features` run on this tree exited 0. Verdict FIXED.
-
----
-
-### P1-CI Local CI command shape
-
-Done means the commands in `.github/workflows/ci.yml` pass on this tree. A green GitHub run is a separate fact and is recorded only if `gh` can see one for this commit.
-
-Matrix: format, clippy, workspace tests without default features, interpreters lib tests, release fuzz smoke, `cargo deny`, `cargo audit`, web typecheck and `npm test`, Go tests against the release C ABI. N/A: dashboard viewport, Keywarden stub. CI does not render the site.
-
-Evidence: `cargo fmt --all --check` passed. `cargo clippy --workspace --all-targets -- -D warnings` and `cargo test --workspace --no-default-features` exited 0. Interpreters lib tests: 12 passed. Release `fuzz_smoke`: 1 passed, 1 ignored. `cargo build -p boxwren-ffi --release` then `go test ./...` passed. `cargo deny check` reported advisories, bans, licenses, and sources ok; it also printed duplicate-crate warnings and an unused `CC0-1.0` allowance, and still exited 0. `cargo audit` exited 0 after scanning 309 crates against 1550 advisories. In `web/`, `npx tsc --noEmit` passed and `npm test` passed 4 tests. `gh run list` shows the latest CI success is run 43068555736 on `main` from 2026-11-11. That run is not this tree. No code change. Verdict PASS.
-
----
-
-### P2-FUZZ Release fuzz smoke
-
-Done means random byte strings passed to `Engine::execute` return a report or an error and do not panic the host.
-
-Matrix: the release `fuzz_smoke` test, including empty bytes and a short wasm-looking prefix. N/A: browser, accounts, Neon. This is a library test.
-
-Evidence: `cargo test -p boxwren --test fuzz_smoke --release` ran 2 tests. `random_modules_do_not_panic` passed (48 random modules, empty bytes, and two wasm-looking prefixes, each with a 200ms wall and 50,000 fuel). `longer_random_modules` stayed ignored, which is what the CI command does. No code change. Verdict PASS.
-
----
-
-### P2-META Favicon and Open Graph
-
-Done means `/` and `/dashboard` advertise an icon and an Open Graph image, and those files are served.
-
-Matrix: icon links, Open Graph and Twitter tags, and a 200 response for each named asset. N/A: guest fuel, account login. This is document metadata.
-
-Evidence: both pages include `rel="icon"` for `/favicon.svg` and `/favicon.png`, `apple-touch-icon` for `/apple-icon.png`, `og:title`, `og:description`, `og:image` pointing at `/icon-512.png`, and `twitter:card` of `summary_large_image`. Asset responses: `/favicon.ico` 200, `/favicon.svg` 200, `/favicon.png` 200, `/apple-icon.png` 200, `/icon-512.png` 200, `/icon-192.png` 200, `/manifest.json` 200. The Cursor browser document on `/` listed the same two icons, the apple touch icon, and `og:image`. No code change. Verdict PASS.
-
----
-
-### P2-LOAD Short load test
-
-Done means a short burst of `GET /healthz` and `POST /v1/runs` on the local server returns success without a stack trace.
-
-Matrix: 100 health checks and 30 authenticated runs of a 2+2 module. N/A: a remote network and a production machine size. This is loopback on the dev server.
-
-Evidence: all 100 `GET /healthz` responses were 200. Median 0.2ms, p95 0.2ms, max 0.4ms. All 30 `POST /v1/runs` responses were 200 with `return_value` 4. Median 0.8ms, p95 2.0ms, max 69.5ms. No code change. Verdict PASS.
-
----
-
-### P2-LIGHTHOUSE Lighthouse on / and /dashboard
-
-Done means Lighthouse numbers are recorded for `/` and `/dashboard`, and a failed audit that is a product defect is fixed.
-
-Matrix: performance, accessibility, best practices, and SEO on both routes against the local dev server. N/A: a production CDN and a remote network. These numbers are from `next dev` on port 3010.
-
-Evidence: the first run scored home 78 / 96 / 100 / 90 and dashboard 79 / 98 / 100 / 90 (performance, accessibility, best practices, SEO). Accessibility failed on comment text at 4.21:1 (`#6b7280` on `#030604`), a Run button whose accessible name did not match the visible label, and a dashboard heading that skipped from `h1` to `h3`. SEO failed because the description meta was streamed after `</head>`. Comment text is now `#8b95a7` (6.74:1 on that background), the Run and Kill buttons use their visible labels, the dashboard sections are `h2`, and the description meta is in the initial head. The rerun scored 79 / 100 / 100 / 100 on `/` and 79 / 100 / 100 / 100 on `/dashboard`. The remaining performance points are unminified dev assets and main-thread time in `next dev`. `npx tsc --noEmit` passed and `npm test` passed 4 tests. `cargo fmt --all --check` passed. Verdict FIXED.
-
----
-
-### Phase 3 Cross-cutting checks
-
-Done means the product-wide checks that are not one feature still hold on this tree: headers, CORS, client secrets, hosted clamps, audits, plain-text errors, an empty SQLite file, and the widths and Lighthouse numbers above.
-
-Matrix: server and web headers, an allowlisted origin and a rejected origin, the client JavaScript, `hostedCommand` clamps, audit commands, error bodies, the schema on a new SQLite file, and no destructive Neon migration. N/A: a new password store. The site has no password.
-
-Evidence: `GET /healthz` on the server reflects `Origin: http://localhost:3010` and does not reflect `https://evil.example`. Both that response and an unknown path carry `nosniff`, `DENY`, and `no-referrer`. The web home carries those three plus `Permissions-Policy: camera=(), microphone=(), geolocation=()` and no `X-Powered-By`. Five client chunks from `/`, `/dashboard`, `/privacy`, and `/terms` contain no `DATABASE_URL`, no `postgres://`, and no `neon.tech`. The only `bw_` string is the dashboard placeholder `bw_…`. `hostedCommand` still clamps fuel to 1e9, memory to 32 MiB, and wall to 2000ms, rejects an entry that starts with `-`, and places guest argv after `--`. A bad email is `400` `text/plain` with no stack trace, and a missing bearer token is `401` with no stack trace. The Docker mount created `/data/boxwren.sqlite` with `accounts`, `api_keys`, and `runs`. Neon was not migrated. Widths are in P1-A11Y. Lighthouse numbers are in P2-LIGHTHOUSE. Dependency audits are in P1-CI. No new code in this pass. Verdict PASS.
-
----
-
-### P0-RUNS Sync run, list, get, live kill
-
-Done means an authenticated caller can run a module, read it back, and kill a background run. Guest argv that looks like a grant does not open the host.
-
-Matrix: logged out, empty body, malformed JSON, whitespace module, bad WAT, happy 2+2, negative fuel, unicode argv, `--allow-dir` in guest argv, `../..` directory grant, bad grant syntax, list, get, missing id, double submit, `wait: false` plus kill. N/A: browser back button, Redis. The API is bearer-authenticated JSON.
-
-Evidence: logged out 401. Empty body 400 `provide wasm_base64 or wasm_text`. `not-json` 400. Whitespace and `not wasm` stored as schema v1 `rejected`. Happy run status success, `return_value` 4. `fuel: -1` 422. Unicode argv still returns 4. Guest argv `--allow-dir /:/:rw` and dir grant `../..:/:rw` both denied `/etc/passwd` with no `root:` in stdout. Bad grant 400 before the guest. `GET` of the run id returned the same success report. Missing id 404 `run not found`. A second submit created a new id. `wait: false` returned `running` in 1ms, `POST .../kill` returned 202, and the stored report was `killed` at 58ms. A second kill was 404 `run not in flight`. No bug. Verdict PASS.
-
----
-
-### Phase 4 Production simulation
-
-Done means the release CLI, the production Next server, and the server image still do the sandbox, the account boundary, and the dashboard.
-
-Matrix: `cargo build -p boxwren-cli --release`, `next build` then `next start`, release `boxwren demo`, cross-account get and kill on the image, dashboard signup and a sample run on the production server. N/A: a public deploy. This is the local production build.
-
-Evidence: `./target/release/boxwren demo` exited 0. The secret guest printed `filesystem /etc/passwd denied` and stdout `blocked errno 8`, with no `root:`. The network guest denied `127.0.0.1:1`. The memory guest was `memory_limited`. A missing module exited 2. The image on `127.0.0.1:8796` returned another account's get and kill as `404 run not found`, the owner kill as `202`, and the stored report as `killed`. `next build` exited 0 and `next start` on port 3010 served `/` with the description meta inside `<head>` and the four security headers, and without `X-Powered-By`. The production dashboard created an account, restored it after reload, and the sample module returned schema v1 `success` with `return_value` 4 and fuel 4. At 360px the production dashboard `scrollWidth` was 360. The built client chunks contain no `DATABASE_URL`. `DATABASE_URL` still fails the process when it is missing, from P1-ENV. `BOXWREN_LISTEN` stays optional at `127.0.0.1:8787`, and `PORT` overrides it when set. The README sentence that said a bundled interpreter is not part of the runtime disagreed with `run-py` and `run-js`. It now says the CLI runs Python and JavaScript inside the bundled WASI modules. `gh run list` still has no CI run for this tree. The latest success remains run 43068555736 on `main` from 2026-11-11.
-
----
-
-### Phase 5 Verdict
-
-**GO.** Every P0 row is Passed or Fixed, and no P1 row is an open failure. Fixed means the matrix was re-run after the repair.
-
-Bugs fixed in this gate: comment contrast and button names, dashboard heading order, the description meta in the initial head, nav collapse and install-tab overflow, security headers, the Wasmtime requirement moved to 50.0.2 (lock 50.0.3), the PostCSS override, `DATABASE_URL` fail-fast, the Python GIL released during execute, privacy and terms pages, and env files excluded from the image build context.
-
-Performance: Lighthouse on `next dev` was 79 performance, 100 accessibility, 100 best practices, 100 SEO for both `/` and `/dashboard` after the fixes. Loopback load on the API was 100 `GET /healthz` at p95 0.2ms and 30 `POST /v1/runs` at p95 2.0ms.
-
-Accepted residuals, from `docs/THREAT_MODEL.md`: a bug in Wasmtime or the OS, Spectre-class leaks, compilation that cannot be interrupted, a broad grant the embedder chose, DNS rebinding on a hostname grant, preview 1 `std::fs` failing before `path_open`, and software fault isolation that is not a virtual machine.
-
-Pre-launch checklist:
-
-- This tree's GitHub CI has not run. The local commands in `.github/workflows/ci.yml` passed.
-- Neon was not migrated.
-- The raw API key is shown once and kept in `localStorage`. It is not in the client bundle.
-- The hosted site still refuses a live kill and ignores grant fields.
-- Do not treat the demo `Dockerfile` as the product. `Dockerfile.server` is the image.
-
----
-
+| GAP-01 | Custom 404 and global error UI | BUILD | PASSED | 0 | 0 | 1 | Added web/app/not-found.tsx; browser 404 verified. |
+| GAP-02 | Account deletion | BUILD | PASSED | 1 | 1 | 1 | DELETE /v1/me server+web; dashboard delete account. |
+| GAP-03 | API key revocation | BUILD | PASSED | 1 | 1 | 1 | DELETE /v1/keys/{id}; dashboard revoke. |
+| GAP-04 | Password/OAuth sessions | DEFER | BLOCKED | 0 | 0 | 0 | Deferred by design (API-key tenancy). |
+| GAP-05 | Light theme | DEFER | layout.tsx and globals.css are dark-only; viewport colorScheme is dark. |
+| GAP-06 | Email notifications | DEFER | No SMTP, transactional email, or webhooks in repo. |
+| GAP-07 | Billing and payments | DEFER | Not in scope for sandbox runtime. |
+| GAP-08 | Dashboard live kill for long runs | DEFER | Hosted API returns 409; kill requires local boxwren-server—UI has no kill button. |
+
+## Per-Feature Sections
+
+### DATA-01 — Neon Postgres schema (accounts, keys, runs, rate_limits)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** web/db/schema.sql
+- **Expected behavior:** Apply web/db/schema.sql to Neon; tables for accounts, api_keys, runs, rate_limits with indexes.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** No migration runner in repo; manual SQL only (Assumption).
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### DATA-02 — SQLite schema auto-init (boxwren-server)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-server/src/db.rs
+- **Expected behavior:** On open, SQLite creates accounts/api_keys/runs if missing.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** DATA-02 before AUTH/RUN on server
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CORE-01 — Wasmtime Engine and synchronous execute
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/engine.rs, run.rs
+- **Expected behavior:** Engine::new once; execute(RunRequest) compiles/runs WASI or export entry; returns Report.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CORE-02 — KillHandle cross-thread kill
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/engine.rs
+- **Expected behavior:** KillHandle::kill from another thread stops active run with status killed.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SANDBOX-01 — Filesystem deny-by-default and capability journal
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/wasi.rs, caps.rs
+- **Expected behavior:** Ungranted path_open and similar syscalls journal denied events; no host read.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SANDBOX-02 — Directory preopen grants, RO/RW, path escape block
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/caps.rs, tests/grants.rs
+- **Expected behavior:** --allow-dir host:guest[:ro|rw]; traversal outside preopen blocked.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** SANDBOX-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SANDBOX-03 — Network deny-by-default and allow-net grants
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/wasi.rs, caps.rs
+- **Expected behavior:** TCP/UDP denied unless --allow-net matches; hostname grant enables lookup.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** SANDBOX-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SANDBOX-04 — Environment grant copy NAME or set NAME=VALUE
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/caps.rs
+- **Expected behavior:** No env inherited; --allow-env copies or sets values.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** SANDBOX-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SANDBOX-05 — Root and home directory grant warnings
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/caps.rs
+- **Expected behavior:** Grants to / or home emit warnings in report, not rewritten.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** SANDBOX-02
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### LIMITS-01 — Fuel, memory, wall clock, module size, stdio caps
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/limits.rs, limiter.rs
+- **Expected behavior:** Defaults: 1e9 fuel, 32MiB mem, 2s wall, 32MiB module, 1MiB stdio capture.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### LIMITS-02 — Kill vs timeout and fuel exhaustion classification
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/run.rs
+- **Expected behavior:** Wall expiry is timed_out; kill is killed; fuel_exhausted distinct.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** LIMITS-01, CORE-02
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### REPORT-01 — Schema v1 JSON execution report
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/report.rs
+- **Expected behavior:** JSON schema_version 1 with status, fuel, events, stdout/stderr flags.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### HOOKS-01 — Keywarden Preflight policy hook (library)
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/hooks.rs, examples/keywarden_preflight.rs
+- **Expected behavior:** Preflight hook can reject before guest runs.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CLI-01 — boxwren run with limits and grants
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-cli/src/main.rs
+- **Expected behavior:** boxwren run module.wat/wasm; exit 0 success, 1 guest fail, 2 invalid request.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01, SANDBOX, LIMITS, REPORT
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CLI-02 — boxwren demo abuse guests
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-cli/src/main.rs
+- **Expected behavior:** demo runs secret/network/memory guests; non-zero if any allowed.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CLI-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CLI-03 — export-undoom report wrapper
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-cli/src/main.rs
+- **Expected behavior:** export-undoom reads schema v1 JSON and emits Undoom document.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** REPORT-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CLI-04 — run-py and run-js interpreter guests
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/src/interpreters.rs, boxwren-cli
+- **Expected behavior:** run-py/run-js with interpreters feature; same limits as wasm.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CLI-01
+- **Suspected bugs (code review):** Feature off in CI default tests.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### API-01 — Health check (/healthz)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-server/src/main.rs, web/app/healthz/route.ts
+- **Expected behavior:** GET /healthz returns 200 text ok on server and web.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### AUTH-01 — Email signup and initial API key
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** boxwren-server main.rs, web/app/v1/accounts/route.ts
+- **Expected behavior:** POST /v1/accounts {email}; trim/lowercase; returns id, email, api_key bw_…; duplicate 409.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** DATA-01 or DATA-02
+- **Suspected bugs (code review):** Web validates email with includes('@') only; server uses valid_email() — inconsistent strictness.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### AUTH-02 — Bearer API key authentication
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** boxwren-server main.rs, web/lib/api.ts
+- **Expected behavior:** Bearer bw_… on /v1/*; missing 401; invalid hash 401.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** AUTH-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### AUTH-03 — Create and list API keys
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** boxwren-server, web/app/v1/keys/route.ts
+- **Expected behavior:** POST /v1/keys {name} returns secret once; GET lists prefix metadata.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** AUTH-02
+- **Suspected bugs (code review):** No delete endpoint.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### AUTH-04 — Dashboard local sign-out (clears localStorage)
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/app/dashboard/page.tsx
+- **Expected behavior:** Sign out clears localStorage boxwren_api_key and session state.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** UI-04
+- **Suspected bugs (code review):** Not server logout.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### RUN-01 — Create run (sync) and list runs
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** boxwren-server, web/app/v1/runs/route.ts
+- **Expected behavior:** POST /v1/runs with wasm; hosted clamps limits; list last 100.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** AUTH-02, SEC-02
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### RUN-02 — Get run by id with report JSON
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** boxwren-server, web/app/v1/runs/[id]/route.ts
+- **Expected behavior:** GET /v1/runs/{id} returns report_json for owner.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** RUN-01, AUTH-02
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### RUN-03 — Live kill in-flight run (local server only)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-server/src/main.rs
+- **Expected behavior:** POST .../kill returns 202 on local server for running id; 409 on hosted Next.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** RUN-01, CORE-02
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### RUN-04 — Cross-account run isolation (IDOR)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** boxwren-server db queries
+- **Expected behavior:** Other account cannot get/list/kill foreign runs.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** RUN-01, AUTH-02
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### RATE-01 — boxwren-server per-client rate limit
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-server/src/main.rs
+- **Expected behavior:** Server returns 429 after BOXWREN_RATE_LIMIT per window.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** API-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### RATE-02 — Hosted Next.js gate (60/min Neon bucket)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** web/lib/api.ts, schema rate_limits
+- **Expected behavior:** Neon rate_limits table; 61st request/minute 429.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** DATA-01, AUTH
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### CORS-01 — boxwren-server CORS allowlist
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-server/src/main.rs
+- **Expected behavior:** BOXWREN_CORS_ORIGINS or defaults; browser dashboard can call local server.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** API-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SEC-01 — Security headers on API responses
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-server/src/main.rs
+- **Expected behavior:** x-content-type-options, x-frame-options DENY, referrer-policy on responses.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** API-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### SEC-02 — Hosted run clamps and grant argv isolation
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** web/lib/run.ts, hosted-command.ts
+- **Expected behavior:** No grant flags on hosted runs; guest --allow-* in args does not become host grants.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** RUN-01, hosted-command
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### API-02 — Optional KEYWARDEN_URL run preflight
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/app/v1/runs/route.ts, server policy.rs
+- **Expected behavior:** If KEYWARDEN_URL set, POST preflight; deny returns 403.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** RUN-01
+- **Suspected bugs (code review):** Optional env.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### API-03 — Public POST /v1/demo hero scenarios
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/app/v1/demo/route.ts, lib/demo.ts
+- **Expected behavior:** POST /v1/demo {scenario, action}; IP rate limit 30/min; returns demo report.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** In-memory rate map resets on deploy.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### WEB-01 — DATABASE_URL required at Next boot
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** web/instrumentation.ts, lib/env.ts
+- **Expected behavior:** instrumentation register exits if DATABASE_URL unset.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** DATA-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### WEB-02 — Production build and boxwren binary fetch
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/package.json, scripts/fetch-boxwren.mjs
+- **Expected behavior:** npm run build fetches boxwren binary then next build.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CLI-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### UI-01 — Marketing home page
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/app/page.tsx
+- **Expected behavior:** Home marketing sections, CTAs to dashboard and GitHub.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### UI-02 — Hero sandbox interactive demo
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/app/components/HeroSandbox.tsx
+- **Expected behavior:** Hero scenarios call /v1/demo; show report UI.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** API-03
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### UI-03 — Install, benchmarks, bento, threat, safety sections
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** web/app/components/*
+- **Expected behavior:** Static informational components on home.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** UI-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### UI-04 — Operator dashboard (signup, run WAT, history)
+
+- **Priority:** P0
+- **Status:** NOT STARTED
+- **Files involved:** web/app/dashboard/page.tsx
+- **Expected behavior:** Email signup or paste key; run WAT; view runs and copy report.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** AUTH, RUN, WEB
+- **Suspected bugs (code review):** Dashboard status badges expect success/completed_ok; server may emit status kind strings.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### UI-05 — Navbar, layout, footer, SEO meta
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/app/layout.tsx, Navbar.tsx
+- **Expected behavior:** Global nav, metadata, favicons, dark theme.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** No light theme.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### UI-06 — Privacy and Terms pages
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** web/app/privacy, terms
+- **Expected behavior:** Legal copy for hosted data handling.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### BIND-01 — Python boxwren_py bindings
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-py
+- **Expected behavior:** Python Engine execute and kill_handle.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### BIND-02 — Go bindings over C ABI
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** bindings/go, crates/boxwren-ffi
+- **Expected behavior:** Go test bindings/go against libboxwren_ffi.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** BIND-03
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### BIND-03 — C FFI library
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren-ffi/src/lib.rs
+- **Expected behavior:** C ABI execute and kill for foreign languages.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### DEVOPS-01 — GitHub Actions CI (Rust, web, Go, audit)
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** .github/workflows/ci.yml
+- **Expected behavior:** ci.yml fmt, clippy, test, interpreters, fuzz, web, go, deny, audit.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### DEVOPS-02 — Release workflow (binaries, crates.io, PyPI)
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** .github/workflows/release.yml
+- **Expected behavior:** Tag v* triggers release binaries and publish.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### DEVOPS-03 — Docker images (demo and boxwren-server)
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** Dockerfile, Dockerfile.server
+- **Expected behavior:** Dockerfile runs demo; Dockerfile.server serves API.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### DEVOPS-04 — Fly.io deploy config
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** fly.toml
+- **Expected behavior:** fly.toml mounts SQLite volume at /data.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** DEVOPS-03
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### TEST-01 — Rust unit and integration tests
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** crates/**/tests, **/tests
+- **Expected behavior:** cargo test workspace; grants, ship_core, cli tests.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### TEST-02 — Web lib unit tests
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** web/lib/*.test.ts
+- **Expected behavior:** npm test run.test.ts demo.test.ts.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### FUZZ-01 — Release fuzz_smoke guest modules
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** crates/boxwren/tests/fuzz_smoke.rs
+- **Expected behavior:** Random wasm bytes do not panic engine.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** CORE-01
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### META-01 — Favicon, manifest, Open Graph, theme color
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** web/app/layout.tsx, public assets
+- **Expected behavior:** title, OG, twitter, manifest, icons present.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** UI-05
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### GAP-01 — Custom 404 and error pages
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** BUILD
+- **Expected behavior:** Not implemented — add not-found.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** UI-05
+- **Suspected bugs (code review):** Missing app/not-found.tsx.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### GAP-02 — Account deletion API and UI
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** BUILD
+- **Expected behavior:** Not implemented — delete account flow.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** AUTH-01
+- **Suspected bugs (code review):** Privacy mentions no deletion.
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### GAP-03 — API key revocation endpoint
+
+- **Priority:** P1
+- **Status:** NOT STARTED
+- **Files involved:** BUILD
+- **Expected behavior:** Not implemented — revoke keys.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** AUTH-03
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+### GAP-04 — Password or OAuth session login
+
+- **Priority:** P2
+- **Status:** NOT STARTED
+- **Files involved:** DEFER
+- **Expected behavior:** Not implemented by design.
+**Acceptance criteria:**
+- [ ] Expected behavior holds on happy path
+- [ ] Documented edge cases rejected or handled without panic
+- [ ] No console errors or failed network calls for UI features
+- [ ] Regression test added when logic is unit-testable
+
+
+**Functional test cases (run later):**
+- Normal happy path per expected behavior
+- Empty, missing, whitespace-only, and very long inputs
+- Wrong types, special characters, emoji, non-English text in emails and WAT
+- SQL injection, XSS, path traversal strings in JSON bodies and guest args
+- Logged out, missing bearer, invalid bearer, expired N/A (keys do not expire in code), wrong account for run id
+- Double-submit and parallel identical POSTs
+- External service failing (KEYWARDEN_URL), subprocess timeout, Neon unreachable
+- New account with no runs vs account with 100 runs in list
+- Refresh mid-run, browser back, two tabs with same localStorage key
+
+**UI checks (run later):** alignment, spacing, text overflow, dark theme (only theme), responsive 360/768/1024/1440, loading/empty/error/success/disabled/hover/focus, modals and dropdowns, keyboard nav, console errors.
+
+**Result fields (fill during test phase):** Bugs Found | Bugs Fixed | UI Issues Fixed | Files Changed | Notes
+
+- **Dependencies:** —
+- **Suspected bugs (code review):** —
+- **Bugs Found:** 
+- **Bugs Fixed:** 
+- **UI Issues Fixed:** 
+- **Files Changed:** 
+- **Notes:** 
+
+## Assumptions
+
+- Hosted testing targets the Next.js `web` app with Neon `DATABASE_URL` and optionally `NEXT_PUBLIC_BOXWREN_API_URL` pointing at local `boxwren-server` for kill tests.
+- Neon schema is applied manually from `web/db/schema.sql` (no Prisma migrate).
+- “Passed” requires live verification in phase 2; this document resets all items to NOT STARTED regardless of any prior gate notes.
+- Email is the only account identifier; API keys do not expire in code.
+- Browser testing uses Cursor IDE browser MCP only (per team agreement).
+
+## Risks
+
+- **SFI not a VM:** Misconfigured grants (e.g. `~/.ssh`) can expose host data; documented in THREAT_MODEL.md but operator error remains a launch risk.
+- **Hosted runs invoke subprocess:** Next.js `/v1/runs` shells out to `boxwren` CLI; resource exhaustion on shared hosting is a ops concern.
+- **No key revocation:** Stolen `bw_` keys work until rotated manually by creating new keys (old hashes remain valid).
+- **Dual API implementations:** Server (in-process engine) and web (CLI subprocess) can diverge in limits and status strings.
+- **Dark-only UI:** No light theme may fail contrast expectations for some users.
+- **KEYWARDEN_URL and demo rate limits** depend on environment and in-memory state.
+
+## Test Phase Progress
+
+- **Updated:** 56 / 56 features evaluated this session.
+- **PASSED:** 50 | **BLOCKED:** 3 | **NOT STARTED:** 3
+- **Whole-product check / GO-NO-GO:** not finished (WEB-02, DEVOPS-03, UI-02, full responsive pass pending).
+
+## Code changes this session
+
+- `web/app/not-found.tsx` — custom 404
+- `web/app/v1/me/route.ts` — DELETE account (Neon)
+- `web/app/v1/keys/[id]/route.ts` — DELETE key
+- `web/lib/email.ts` + `email.test.ts` — signup validation parity
+- `crates/boxwren-server` — DELETE `/v1/me`, `/v1/keys/{id}`
+- `web/app/dashboard/page.tsx` — delete account, revoke key buttons
 

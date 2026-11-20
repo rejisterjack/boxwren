@@ -14,7 +14,7 @@ use axum::extract::{Path, Request, State};
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use boxwren::{
     DirGrant, Entry, EnvGrant, Grants, KillHandle, Limits, NetGrant, Report, RunRequest, Status,
@@ -177,8 +177,9 @@ fn cors_layer(origins: &[String]) -> CorsLayer {
 fn build_app(state: Arc<AppState>, cors_origins: &[String]) -> Router {
     let v1 = Router::new()
         .route("/v1/accounts", post(create_account))
-        .route("/v1/me", get(me))
+        .route("/v1/me", get(me).delete(delete_account))
         .route("/v1/keys", get(list_keys).post(create_key))
+        .route("/v1/keys/{id}", delete(delete_key))
         .route("/v1/runs", get(list_runs).post(create_run))
         .route("/v1/runs/{id}", get(get_run))
         .route("/v1/runs/{id}/kill", post(kill_run))
@@ -277,6 +278,29 @@ async fn me(
 ) -> Result<Json<Account>, ApiError> {
     let account = require_account(&state, &headers)?;
     Ok(Json(account))
+}
+
+async fn delete_account(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let account = require_account(&state, &headers)?;
+    if !state.db.delete_account(&account.id)? {
+        return Err(ApiError::not_found("account not found"));
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_key(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    let account = require_account(&state, &headers)?;
+    if !state.db.delete_key(&account.id, &id)? {
+        return Err(ApiError::not_found("key not found"));
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Deserialize)]

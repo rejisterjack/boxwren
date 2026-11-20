@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { db, newSecret } from "../../../lib/db";
 import { gate, text } from "../../../lib/api";
+import { validEmail } from "../../../lib/email";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     return text("invalid JSON", 400);
   }
   const email = body.email?.trim().toLowerCase() ?? "";
-  if (!email.includes("@") || email.length > 320) return text("invalid email", 400);
+  if (!validEmail(email)) return text("invalid email", 400);
 
   const accountId = randomUUID();
   const key = newSecret();

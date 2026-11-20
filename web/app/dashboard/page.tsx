@@ -120,6 +120,37 @@ export default function DashboardPage() {
     setNewKey(body.api_key);
   }
 
+  async function revokeKey(keyId: string) {
+    setError("");
+    const res = await fetch(`${API}/v1/keys/${keyId}`, { method: "DELETE", headers });
+    if (!res.ok) {
+      setError(await res.text());
+      return;
+    }
+    if (res.status === 204) {
+      await refresh();
+    }
+  }
+
+  async function deleteAccount() {
+    if (!window.confirm("Delete this account and all runs? This cannot be undone.")) return;
+    setError("");
+    const res = await fetch(`${API}/v1/me`, { method: "DELETE", headers });
+    if (!res.ok && res.status !== 204) {
+      setError(await res.text());
+      return;
+    }
+    window.localStorage.removeItem("boxwren_api_key");
+    setToken("");
+    setDraftKey("");
+    setAccount(null);
+    setNewKey(null);
+    setRuns([]);
+    setKeys([]);
+    setSelected(null);
+    setReport("");
+  }
+
   async function createKey() {
     const res = await fetch(`${API}/v1/keys`, {
       method: "POST",
@@ -255,6 +286,9 @@ export default function DashboardPage() {
                 <button className="btn btn-secondary btn-sm" type="button" onClick={createKey}>
                   + Issue New API Key
                 </button>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={() => void deleteAccount()}>
+                  Delete account
+                </button>
                 <button
                   className="btn btn-ghost btn-sm"
                   type="button"
@@ -328,6 +362,7 @@ export default function DashboardPage() {
                     <th>Key Name</th>
                     <th>Prefix Identifier</th>
                     <th>Created At</th>
+                    <th aria-label="Actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -339,6 +374,17 @@ export default function DashboardPage() {
                       </td>
                       <td className="muted" style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem" }}>
                         {formatDate(k.created_at)}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => void revokeKey(k.id)}
+                          disabled={keys.length <= 1}
+                          title={keys.length <= 1 ? "Keep at least one key" : "Revoke this key"}
+                        >
+                          Revoke
+                        </button>
                       </td>
                     </tr>
                   ))}

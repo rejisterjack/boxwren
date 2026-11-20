@@ -240,6 +240,32 @@ impl Db {
         Ok(rows)
     }
 
+    pub fn delete_key(&self, account_id: &str, key_id: &str) -> Result<bool, String> {
+        let conn = self.conn.lock().map_err(|err| err.to_string())?;
+        let n = conn
+            .execute(
+                "DELETE FROM api_keys WHERE id = ?1 AND account_id = ?2",
+                params![key_id, account_id],
+            )
+            .map_err(|err| err.to_string())?;
+        Ok(n > 0)
+    }
+
+    pub fn delete_account(&self, account_id: &str) -> Result<bool, String> {
+        let conn = self.conn.lock().map_err(|err| err.to_string())?;
+        conn.execute("DELETE FROM runs WHERE account_id = ?1", params![account_id])
+            .map_err(|err| err.to_string())?;
+        conn.execute(
+            "DELETE FROM api_keys WHERE account_id = ?1",
+            params![account_id],
+        )
+        .map_err(|err| err.to_string())?;
+        let n = conn
+            .execute("DELETE FROM accounts WHERE id = ?1", params![account_id])
+            .map_err(|err| err.to_string())?;
+        Ok(n > 0)
+    }
+
     pub fn get_run(&self, account_id: &str, id: &str) -> Result<Option<RunRow>, String> {
         let conn = self.conn.lock().map_err(|err| err.to_string())?;
         conn.query_row(
