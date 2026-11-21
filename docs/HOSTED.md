@@ -8,6 +8,14 @@ Filesystem, network, and environment grants are ignored on the public API. Fuel,
 
 OpenAPI: [`openapi.yaml`](openapi.yaml).
 
+## Database
+
+Apply [`web/db/schema.sql`](../web/db/schema.sql) once to the Neon database in `DATABASE_URL`. Every statement is `CREATE TABLE IF NOT EXISTS` or `CREATE INDEX IF NOT EXISTS`, so running it again does not drop accounts or runs. `boxwren-server` creates its own SQLite tables on startup and does not use this file.
+
+```bash
+psql "$DATABASE_URL" -f web/db/schema.sql
+```
+
 ## Run locally with a live kill
 
 `boxwren-server` is the long-lived process. Its kill map is in memory, so it stays on one machine.

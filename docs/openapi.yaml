@@ -4,7 +4,7 @@ info:
   description: |
     Optional multi-tenant HTTP API around the Boxwren Wasmtime sandbox.
     Local-first embed remains the primary path; see docs/HOSTED.md.
-  version: 0.1.0
+  version: 0.2.4
 servers:
   - url: https://boxwren.rejisterjack.com
     description: Public Next.js API. Grants are ignored. wait=false is 400. Kill is 409.
@@ -59,6 +59,15 @@ paths:
                 $ref: "#/components/schemas/Account"
         "401":
           description: Missing or invalid API key
+    delete:
+      summary: Delete the current account, its keys, and its runs
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Account deleted
+        "401":
+          description: Missing or invalid API key
   /v1/keys:
     get:
       summary: List API key metadata
@@ -97,6 +106,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateKeyResponse"
+        "400":
+          description: Invalid key name
+  /v1/keys/{id}:
+    delete:
+      summary: Revoke one API key owned by the caller
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Key revoked
+        "400":
+          description: Refused because it is the last key
+        "401":
+          description: Missing or invalid API key
+        "404":
+          description: Key not found for this account
+  /v1/demo:
+    post:
+      summary: Run one public hero scenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario]
+              properties:
+                scenario:
+                  type: string
+                  enum: [secret, loop, network, clean]
+                action:
+                  type: string
+                  enum: [run, kill]
+      responses:
+        "200":
+          description: Scenario report
+        "400":
+          description: Invalid JSON or unknown scenario
+        "429":
+          description: Per-IP demo rate limit
+        "503":
+          description: The boxwren CLI failed
   /v1/runs:
     get:
       summary: List recent runs

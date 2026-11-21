@@ -14,7 +14,7 @@ use axum::extract::{Path, Request, State};
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use boxwren::{
     DirGrant, Entry, EnvGrant, Grants, KillHandle, Limits, NetGrant, Report, RunRequest, Status,
@@ -166,7 +166,7 @@ fn cors_layer(origins: &[String]) -> CorsLayer {
         .collect();
     CorsLayer::new()
         .allow_origin(AllowOrigin::list(values))
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
         .allow_headers([
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
@@ -177,8 +177,9 @@ fn cors_layer(origins: &[String]) -> CorsLayer {
 fn build_app(state: Arc<AppState>, cors_origins: &[String]) -> Router {
     let v1 = Router::new()
         .route("/v1/accounts", post(create_account))
-        .route("/v1/me", get(me))
+        .route("/v1/me", get(me).delete(delete_account))
         .route("/v1/keys", get(list_keys).post(create_key))
+        .route("/v1/keys/{id}", delete(delete_key))
         .route("/v1/runs", get(list_runs).post(create_run))
         .route("/v1/runs/{id}", get(get_run))
         .route("/v1/runs/{id}/kill", post(kill_run))
@@ -192,7 +193,26 @@ fn build_app(state: Arc<AppState>, cors_origins: &[String]) -> Router {
         .merge(v1)
         .layer(cors_layer(cors_origins))
         .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(security_headers))
         .with_state(state)
+}
+
+async fn security_headers(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        HeaderName::from_static("x-frame-options"),
+        HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        HeaderName::from_static("referrer-policy"),
+        HeaderValue::from_static("no-referrer"),
+    );
+    response
 }
 
 async fn rate_limit_middleware(
@@ -214,7 +234,11 @@ fn rate_limit_key(headers: &HeaderMap) -> String {
     headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .map(|s| format!("auth:{}", &s[..s.len().min(48)]))
+        .map(|header| {
+            use sha2::{Digest, Sha256};
+            // Hash the whole header. A 48-character prefix collides for real bearer tokens.
+            format!("auth:{}", hex::encode(Sha256::digest(header.as_bytes())))
+        })
         .unwrap_or_else(|| "anon".into())
 }
 
@@ -258,6 +282,36 @@ async fn me(
 ) -> Result<Json<Account>, ApiError> {
     let account = require_account(&state, &headers)?;
     Ok(Json(account))
+}
+
+async fn delete_account(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<StatusCode, ApiError> {
+    let account = require_account(&state, &headers)?;
+    if !state.db.delete_account(&account.id)? {
+        return Err(ApiError::not_found("account not found"));
+    }
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn delete_key(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    let account = require_account(&state, &headers)?;
+    let keys = state.db.list_keys(&account.id)?;
+    if !keys.iter().any(|key| key.id == id) {
+        return Err(ApiError::not_found("key not found"));
+    }
+    if keys.len() <= 1 {
+        return Err(ApiError::bad("cannot revoke the last API key".into()));
+    }
+    if !state.db.delete_key(&account.id, &id)? {
+        return Err(ApiError::not_found("key not found"));
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[derive(Deserialize)]
@@ -759,6 +813,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(
+            res.headers().get("x-content-type-options").unwrap(),
+            "nosniff"
+        );
+        assert_eq!(res.headers().get("x-frame-options").unwrap(), "DENY");
+        assert_eq!(res.headers().get("referrer-policy").unwrap(), "no-referrer");
         assert_eq!(body_string(res).await, "ok");
     }
 
@@ -820,6 +880,37 @@ mod tests {
             .get("access-control-allow-origin")
             .and_then(|v| v.to_str().ok());
         assert_eq!(allow, Some("http://localhost:3000"));
+    }
+
+    #[test]
+    fn rate_limit_keys_do_not_collapse_long_bearer_tokens() {
+        let shared = "x".repeat(41);
+        let mut first = HeaderMap::new();
+        first.insert(
+            axum::http::header::AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {shared}AAA")).unwrap(),
+        );
+        let mut second = HeaderMap::new();
+        second.insert(
+            axum::http::header::AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {shared}BBB")).unwrap(),
+        );
+        assert_ne!(rate_limit_key(&first), rate_limit_key(&second));
+        assert_eq!(rate_limit_key(&HeaderMap::new()), "anon");
+    }
+
+    #[tokio::test]
+    async fn last_api_key_cannot_be_revoked() {
+        let app = build_app(test_state(100), &parse_cors_origins(None));
+        let key = create_account_key(&app, "last@example.com").await;
+        let listed = send(&app, "GET", "/v1/keys", Some(&key), "").await;
+        let body: serde_json::Value = serde_json::from_str(&body_string(listed).await).unwrap();
+        let id = body["keys"][0]["id"].as_str().unwrap();
+        let denied = send(&app, "DELETE", &format!("/v1/keys/{id}"), Some(&key), "").await;
+        assert_eq!(denied.status(), StatusCode::BAD_REQUEST);
+        assert!(body_string(denied).await.contains("last API key"));
+        let me = send(&app, "GET", "/v1/me", Some(&key), "").await;
+        assert_eq!(me.status(), StatusCode::OK);
     }
 
     async fn send(

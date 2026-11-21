@@ -120,6 +120,37 @@ export default function DashboardPage() {
     setNewKey(body.api_key);
   }
 
+  async function revokeKey(keyId: string) {
+    setError("");
+    const res = await fetch(`${API}/v1/keys/${keyId}`, { method: "DELETE", headers });
+    if (!res.ok) {
+      setError(await res.text());
+      return;
+    }
+    if (res.status === 204) {
+      await refresh();
+    }
+  }
+
+  async function deleteAccount() {
+    if (!window.confirm("Delete this account and all runs? This cannot be undone.")) return;
+    setError("");
+    const res = await fetch(`${API}/v1/me`, { method: "DELETE", headers });
+    if (!res.ok && res.status !== 204) {
+      setError(await res.text());
+      return;
+    }
+    window.localStorage.removeItem("boxwren_api_key");
+    setToken("");
+    setDraftKey("");
+    setAccount(null);
+    setNewKey(null);
+    setRuns([]);
+    setKeys([]);
+    setSelected(null);
+    setReport("");
+  }
+
   async function createKey() {
     const res = await fetch(`${API}/v1/keys`, {
       method: "POST",
@@ -201,7 +232,7 @@ export default function DashboardPage() {
       {!token ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           <form className="panel" onSubmit={signup} style={{ maxWidth: 440, width: "100%" }}>
-            <h3>Authenticate with Enclave</h3>
+            <h2>Authenticate with Enclave</h2>
             <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1.25rem" }}>
               Sign up with your email to generate a hosted tenant key or paste an existing key.
             </p>
@@ -246,7 +277,7 @@ export default function DashboardPage() {
           <div className="panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
               <div>
-                <h3>Active Operator Tenant</h3>
+                <h2>Active Operator Tenant</h2>
                 <p className="muted" style={{ fontFamily: "var(--font-mono)", fontSize: "0.85rem" }}>
                   {account ? `${account.email} · ID: ${account.id}` : "Connecting to telemetry..."}
                 </p>
@@ -254,6 +285,9 @@ export default function DashboardPage() {
               <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
                 <button className="btn btn-secondary btn-sm" type="button" onClick={createKey}>
                   + Issue New API Key
+                </button>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={() => void deleteAccount()}>
+                  Delete account
                 </button>
                 <button
                   className="btn btn-ghost btn-sm"
@@ -328,6 +362,7 @@ export default function DashboardPage() {
                     <th>Key Name</th>
                     <th>Prefix Identifier</th>
                     <th>Created At</th>
+                    <th aria-label="Actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -340,6 +375,17 @@ export default function DashboardPage() {
                       <td className="muted" style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem" }}>
                         {formatDate(k.created_at)}
                       </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => void revokeKey(k.id)}
+                          disabled={keys.length <= 1}
+                          title={keys.length <= 1 ? "Keep at least one key" : "Revoke this key"}
+                        >
+                          Revoke
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -348,10 +394,10 @@ export default function DashboardPage() {
           </div>
 
           {/* Bottom Grid: Run WAT module & Runs Explorer */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: "2rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 360px), 1fr))", gap: "2rem", minWidth: 0 }}>
             {/* Run Module Form */}
             <form className="panel" onSubmit={runModule}>
-              <h3>Execute WebAssembly Module</h3>
+              <h2>Execute WebAssembly Module</h2>
               <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
                 Submit WebAssembly Text (WAT) or bytecode to the Wasmtime sandbox enforcer.
               </p>
@@ -376,7 +422,7 @@ export default function DashboardPage() {
 
             {/* Runs & Audit Log */}
             <div className="panel">
-              <h3>Execution History</h3>
+              <h2>Execution History</h2>
               <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
                 Select a run to view its deterministic Schema v1 JSON report.
               </p>
@@ -462,7 +508,10 @@ export default function DashboardPage() {
                       border: "1px solid var(--border-subtle)",
                       borderRadius: "var(--radius-sm)",
                       maxHeight: "220px",
-                      overflowY: "auto",
+                      maxWidth: "100%",
+                      overflow: "auto",
+                      whiteSpace: "pre-wrap",
+                      overflowWrap: "anywhere",
                       fontSize: "0.78rem",
                       color: "var(--text-secondary)",
                       fontFamily: "var(--font-mono)",

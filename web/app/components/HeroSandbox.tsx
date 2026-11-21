@@ -21,11 +21,11 @@ const SCENARIOS: Record<Scenario, ScenarioData> = {
     title: "Host File Read",
     badge: "Trapped at Preopen Border",
     badgeColor: "kill",
-    threatVector: "Prompt Injection trying to read ~/.ssh/id_rsa",
+    threatVector: "Prompt injection trying to read /etc/passwd",
     codeLines: [
-      { text: "// Malicious prompt injection attempting host key exfiltration", type: "comment" },
-      { text: "fn exploit_read_host_keys() -> Result<(), Box<dyn Error>> {", type: "code" },
-      { text: "    let target = \"~/.ssh/id_rsa\";", type: "code" },
+      { text: "// Malicious prompt injection attempting a host file read", type: "comment" },
+      { text: "fn exploit_read_host_file() -> Result<(), Box<dyn Error>> {", type: "code" },
+      { text: "    let target = \"/etc/passwd\";", type: "code" },
       { text: "    let host_secret = std::fs::read_to_string(target)?;", type: "highlight" },
       { text: "    println!(\"EXFILTRATE: {}\", host_secret);", type: "code" },
       { text: "    Ok(())", type: "code" },
@@ -35,7 +35,7 @@ const SCENARIOS: Record<Scenario, ScenarioData> = {
   loop: {
     id: "loop",
     title: "Runaway CPU Loop",
-    badge: "Epoch Fuel Trapped",
+    badge: "Stopped by the wall clock",
     badgeColor: "warn",
     threatVector: "Spin-lock denial-of-service locking host CPU thread",
     codeLines: [
@@ -172,7 +172,6 @@ export default function HeroSandbox() {
             className={`btn-action btn-run ${isRunning ? "running" : ""}`}
             onClick={() => void execute("run")}
             disabled={isRunning}
-            aria-label="Execute scenario in sandbox"
           >
             {isRunning ? (
               <>
@@ -191,7 +190,6 @@ export default function HeroSandbox() {
             className={`btn-action btn-kill ${report?.status?.kind === "killed" ? "killed-active" : ""}`}
             onClick={() => void execute("kill")}
             disabled={isRunning}
-            aria-label="Stop a live guest with the kill switch"
           >
             <span className="kill-icon" aria-hidden="true">⏹</span>
             Kill Switch

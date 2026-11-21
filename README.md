@@ -6,7 +6,7 @@ Boxwren contains execution. [Keywarden](https://github.com/rejisterjack/keywarde
 
 **Local-first is the default.** Embed the crate or CLI where the agent already runs. An optional hosted stack — `boxwren-server` accounts/API keys/runs, plus the Next.js dashboard under `web/app/dashboard` — is documented in [docs/HOSTED.md](docs/HOSTED.md) and described by [docs/openapi.yaml](docs/openapi.yaml).
 
-The guest is WebAssembly, not source. Agent frameworks compile or supply a module. A bundled Python or JavaScript interpreter is not part of this runtime.
+The sandbox guest is WebAssembly. Agent frameworks compile or supply a module. The CLI default `interpreters` feature also accepts Python or JavaScript source and runs it inside bundled MicroPython and QuickJS WASI modules, under the same limits. Those guests are not a host CPython or V8.
 
 ## Install
 

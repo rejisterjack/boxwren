@@ -11,11 +11,13 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+const description =
+  "Contain untrusted AI agent code at 1 µs overhead. In-process Wasmtime isolation, deny-by-default capabilities, hard resource limits, and an instant cross-thread kill switch.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://boxwren.dev"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://boxwren.rejisterjack.com"),
   title: "Boxwren — Sandboxed WebAssembly Execution Runtime for AI Agents",
-  description:
-    "Contain untrusted AI agent code at 1 µs overhead. In-process Wasmtime isolation, deny-by-default capabilities, hard resource limits, and an instant cross-thread kill switch.",
+  description,
   keywords: [
     "AI agent security",
     "WebAssembly sandbox",
@@ -65,6 +67,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="color-scheme" content="dark" />
+        <meta name="description" content={description} />
       </head>
       <body>
         <Navbar />
@@ -99,6 +102,8 @@ export default function RootLayout({
                 docs.rs API Reference
               </a>
               <Link href="/dashboard">Operator Dashboard</Link>
+              <Link href="/privacy">Privacy</Link>
+              <Link href="/terms">Terms</Link>
             </div>
           </div>
         </footer>

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
-    "next": "15.5.28",
+    "next": "^15.5.29",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
@@ -20,5 +20,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.33"
   }
 }
