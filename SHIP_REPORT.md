@@ -24,7 +24,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | REPORT-01 | Schema v1 JSON execution report | P0 | PASSED | 0 | 0 | 0 | Add-module JSON had schema_version 1 and the documented fields. ship_core report_json_is_schema_v1 passed. Empty stdout was an empty string. |
 | HOOKS-01 | Library Keywarden preflight hook | P1 | PASSED | 0 | 0 | 0 | grants.rs preflight_deny_returns_policy_before_the_guest passed. The library trait does not open a network connection. |
 | CLI-01 | boxwren run | P0 | PASSED | 0 | 0 | 0 | JSON report for the add module exited 0. Missing file exited 2. Bad memory unit exited 2. Guest denial and rejection printed a report and exited 1. SIGINT killed a loop. |
-| CLI-02 | boxwren demo | P0 | NOT STARTED | | | | |
+| CLI-02 | boxwren demo | P0 | PASSED | 0 | 0 | 0 | boxwren demo --report json exited 0. Secret, network, and memory probes were all blocked. |
 | CLI-03 | export-undoom | P1 | NOT STARTED | | | | |
 | CLI-04 | run-py and run-js | P1 | NOT STARTED | | | | |
 | API-01 | Health check | P0 | NOT STARTED | | | | |
@@ -852,7 +852,7 @@ None noticed while reading the code.
 - **ID:** CLI-02
 - **Name:** boxwren demo
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -865,9 +865,9 @@ boxwren demo runs three embedded guests: a read of /etc/passwd, a connect to 127
 
 **Acceptance criteria**
 
-- [ ] demo exits 0 when all three probes are denied.
-- [ ] JSON mode includes the network guest and the secret path.
-- [ ] The command does not require a user-supplied module.
+- [x] demo exits 0 when all three probes are denied.
+- [x] JSON mode includes the network guest and the secret path.
+- [x] The command does not require a user-supplied module.
 
 **Test cases**
 
@@ -895,11 +895,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** boxwren demo --report json exited 0. Secret, network, and memory probes were all blocked.
 
 ### CLI-03 export-undoom
 
