@@ -39,7 +39,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RUN-03 | Live kill on boxwren-server | P0 | PASSED | 0 | 0 | 0 | wait false returned running. POST kill returned 202 and the stored report status was killed. A finished run returned 404 run not in flight. |
 | RUN-04 | Cross-account run isolation | P0 | PASSED | 0 | 0 | 0 | Account B's list was empty. B's GET was 404. B's kill of A's in-flight server run was 404, and the owner could still kill it. |
 | RUN-05 | Hosted async run and kill refusal | P0 | PASSED | 0 | 0 | 0 | Hosted wait false returned 400. Hosted kill returned 409 for a real id and for a missing id. A dirs grant of / did not allow /etc/passwd; the event was denied. |
-| RATE-01 | boxwren-server rate limit | P0 | NOT STARTED | | | | |
+| RATE-01 | boxwren-server rate limit | P0 | PASSED | 1 | 1 | 0 | Limit 2 returned 200, 200, 429 on the anon bucket while /healthz stayed 200. Two bearer tokens that share a 48-character prefix now have separate buckets: the second still returned 401 after the first was limited. The old prefix truncation was replaced with a sha256 of the full header. |
 | RATE-02 | Hosted Neon rate limit | P0 | PASSED | 0 | 0 | 0 | 70 parallel GETs for one key returned 60 times 200 and 10 times 429. Counters are in Neon rate_limits. |
 | RATE-03 | Public demo in-memory rate limit | P1 | NOT STARTED | | | | |
 | CORS-01 | boxwren-server CORS allowlist | P1 | PASSED | 1 | 1 | 0 | OPTIONS DELETE from http://localhost:3000 returned 200 and allow-methods GET, POST, DELETE, OPTIONS. An evil origin was not reflected. http://127.0.0.1:3000 was reflected. DELETE was missing from the allowlist before this pass and is included now. |
@@ -1677,7 +1677,7 @@ No kill button on the dashboard.
 - **ID:** RATE-01
 - **Name:** boxwren-server rate limit
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1689,9 +1689,9 @@ The /v1 router counts requests per window. Default is 60 requests per 60 seconds
 
 **Acceptance criteria**
 
-- [ ] Request 61 in a window returns 429.
-- [ ] A different Authorization value has its own bucket.
-- [ ] /healthz still returns 200 when /v1 is limited.
+- [x] Request 61 in a window returns 429.
+- [x] A different Authorization value has its own bucket.
+- [x] /healthz still returns 200 when /v1 is limited.
 
 **Test cases**
 
@@ -1719,11 +1719,11 @@ Plain text 429.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 1
+- **Bugs Fixed:** 1
+- **UI Issues Fixed:** 0
+- **Files Changed:** crates/boxwren-server/src/main.rs
+- **Notes:** Limit 2 returned 200, 200, 429 on the anon bucket while /healthz stayed 200. Two bearer tokens that share a 48-character prefix now have separate buckets: the second still returned 401 after the first was limited. The old prefix truncation was replaced with a sha256 of the full header.
 
 ### RATE-02 Hosted Neon rate limit
 
