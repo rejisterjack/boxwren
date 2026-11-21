@@ -20,7 +20,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SANDBOX-04 | Environment grants | P0 | PASSED | 0 | 0 | 0 | Missing host variable failed before start. grants.rs env_parse and environment_is_not_inherited_unless_granted passed. Python os.getenv of an explicit NAME=VALUE grant printed hello-env. |
 | SANDBOX-05 | Root and home directory warnings | P1 | PASSED | 0 | 0 | 0 | CLI --allow-dir /:/:ro succeeded and warned that the grant is the filesystem root. grants.rs root_and_home_grants_are_warned_and_not_rewritten passed. |
 | LIMITS-01 | Fuel, memory, wall clock, stdio, and module size caps | P0 | PASSED | 0 | 0 | 0 | fuel 50 returned fuel_exhausted with fuel_used 50. memory.wasm returned memory_limited. Bad --memory 5zz exited 2. Lib tests covered module size, stdio truncation, and five memories. |
-| LIMITS-02 | Kill, timeout, and fuel exhaustion classification | P0 | NOT STARTED | | | | |
+| LIMITS-02 | Kill, timeout, and fuel exhaustion classification | P0 | PASSED | 0 | 0 | 0 | Timeout 200ms on a huge fuel budget returned timed_out at 200ms. Fuel 50 returned fuel_exhausted. SIGINT returned killed. ship_core killing_one_run_leaves_its_sibling passed. |
 | REPORT-01 | Schema v1 JSON execution report | P0 | NOT STARTED | | | | |
 | HOOKS-01 | Library Keywarden preflight hook | P1 | NOT STARTED | | | | |
 | CLI-01 | boxwren run | P0 | NOT STARTED | | | | |
@@ -637,7 +637,7 @@ None noticed while reading the code.
 - **ID:** LIMITS-02
 - **Name:** Kill, timeout, and fuel exhaustion classification
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -650,9 +650,9 @@ A loop that spends its fuel is fuel_exhausted. A loop stopped by the wall clock 
 
 **Acceptance criteria**
 
-- [ ] fuel 50 on a loop reports fuel_exhausted.
-- [ ] A 200ms wall clock with a huge fuel budget reports timed_out.
-- [ ] KillHandle reports killed and finishes before the wall deadline.
+- [x] fuel 50 on a loop reports fuel_exhausted.
+- [x] A 200ms wall clock with a huge fuel budget reports timed_out.
+- [x] KillHandle reports killed and finishes before the wall deadline.
 
 **Test cases**
 
@@ -680,11 +680,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Timeout 200ms on a huge fuel budget returned timed_out at 200ms. Fuel 50 returned fuel_exhausted. SIGINT returned killed. ship_core killing_one_run_leaves_its_sibling passed.
 
 ### REPORT-01 Schema v1 JSON execution report
 
