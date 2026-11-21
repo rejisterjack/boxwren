@@ -52,7 +52,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | WEB-02 | Production build and CLI binary fetch | P1 | PASSED | 0 | 0 | 0 | npm run build fetched the v0.2.4 musl and darwin binaries, next build exited 0, and next start on :3020 served home 200, health 200, and a clean demo returning 4. Chrome on that production server ran the secret scenario and showed filesystem /etc/passwd denied. |
 | UI-01 | Marketing home page | P1 | PASSED | 0 | 0 | 0 | Chrome loaded the home page with the product title and no console errors. Overflow was 0 at 360 and 1440. Light color-scheme emulation kept the dark background and light heading text. |
 | UI-02 | Hero sandbox demo | P1 | PASSED | 1 | 1 | 1 | The hero claimed a read of ~/.ssh/id_rsa and a fuel stop while the guest opens /etc/passwd and the loop stops on the wall clock. The copy now matches. Dev and production runs both showed filesystem /etc/passwd denied. |
-| UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | NOT STARTED | | | | |
+| UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | PASSED | 0 | 0 | 0 | All five home sections rendered. The Rust install tab showed cargo add boxwren. Overflow stayed 0. |
 | UI-04 | Operator dashboard | P0 | NOT STARTED | | | | |
 | UI-05 | Navbar, footer, and SEO metadata | P1 | NOT STARTED | | | | |
 | UI-06 | Privacy and Terms pages | P2 | NOT STARTED | | | | |
@@ -2384,7 +2384,7 @@ Scenario list, code block overflow, report panel, loading, error, disabled, hove
 - **ID:** UI-03
 - **Name:** Install, benchmarks, capabilities, safety, and threat sections
 - **Priority:** P2
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2401,9 +2401,9 @@ Below the hero, the page renders a benchmark chart, a bento of engine capabiliti
 
 **Acceptance criteria**
 
-- [ ] Each section is reachable from the navbar.
-- [ ] Install tabs change the visible command and do not navigate away.
-- [ ] The threat matrix is readable without overlapping cells.
+- [x] Each section is reachable from the navbar.
+- [x] Install tabs change the visible command and do not navigate away.
+- [x] The threat matrix is readable without overlapping cells.
 
 **Test cases**
 
@@ -2431,11 +2431,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** All five home sections rendered. The Rust install tab showed cargo add boxwren. Overflow stayed 0.
 
 ### UI-04 Operator dashboard
 
