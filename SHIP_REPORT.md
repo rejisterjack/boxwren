@@ -56,7 +56,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-04 | Operator dashboard | P0 | PASSED | 0 | 0 | 0 | Chrome signup created a key, the default WAT returned 4 and appeared in history, the only key could not be revoked, sign-out cleared storage, and pasting the key restored the account. At 360px overflow was 0. No console errors. |
 | UI-05 | Navbar, footer, and SEO metadata | P1 | PASSED | 0 | 0 | 0 | Desktop nav and footer links rendered. At 360px the menu opened and Escape closed it. The document title, og:title, and theme-color were present. |
 | UI-06 | Privacy and Terms pages | P2 | PASSED | 1 | 1 | 1 | Privacy said sign-out never deletes the account. It now says sign-out leaves the account and Delete account removes the account, keys, and reports. Terms rendered with title Terms — Boxwren and no overflow at 360. |
-| UI-07 | Custom 404 page | P1 | NOT STARTED | | | | |
+| UI-07 | Custom 404 page | P1 | PASSED | 1 | 1 | 1 | Unknown paths render the custom page with Home and Dashboard links and no overflow at 360. The document title was the site title; not-found now sets Not found — Boxwren. |
 | BIND-01 | Python bindings | P1 | NOT STARTED | | | | |
 | BIND-02 | Go bindings | P1 | NOT STARTED | | | | |
 | BIND-03 | C FFI library | P1 | NOT STARTED | | | | |
@@ -2608,7 +2608,7 @@ Line length, padding at 360 and 1440, heading size, dark theme, focus on footer 
 - **ID:** UI-07
 - **Name:** Custom 404 page
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2620,9 +2620,9 @@ Unknown paths render not-found.tsx: a 404 kicker, the heading Page not found, an
 
 **Acceptance criteria**
 
-- [ ] An unknown path returns the not-found page.
-- [ ] Home and Dashboard links work.
-- [ ] The page is readable at 360px.
+- [x] An unknown path returns the not-found page.
+- [x] Home and Dashboard links work.
+- [x] The page is readable at 360px.
 
 **Test cases**
 
@@ -2650,11 +2650,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 1
+- **Bugs Fixed:** 1
+- **UI Issues Fixed:** 1
+- **Files Changed:** web/app/not-found.tsx
+- **Notes:** Unknown paths render the custom page with Home and Dashboard links and no overflow at 360. The document title was the site title; not-found now sets Not found — Boxwren.
 
 ### BIND-01 Python bindings
 
