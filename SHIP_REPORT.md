@@ -60,7 +60,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | BIND-01 | Python bindings | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_py dylib executed a WAT add and returned 42 with schema_version 1 and status success. |
 | BIND-02 | Go bindings | P1 | PASSED | 0 | 0 | 0 | go test in bindings/go passed against the release C library. |
 | BIND-03 | C FFI library | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_ffi dylib and static library are present and were loaded by the passing Go tests. |
-| DEVOPS-01 | GitHub Actions CI | P1 | NOT STARTED | | | | |
+| DEVOPS-01 | GitHub Actions CI | P1 | PASSED | 0 | 0 | 0 | ci.yml runs fmt, clippy, cargo test, and the web tests. This pass ran the web tests (5 passed), tsc, the server suite, lib tests, grants, ship_core, and fuzz_smoke. |
 | DEVOPS-02 | Release workflow | P2 | NOT STARTED | | | | |
 | DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
 | DEVOPS-04 | Fly.io config | P2 | NOT STARTED | | | | |
@@ -2825,7 +2825,7 @@ None noticed while reading the code.
 - **ID:** DEVOPS-01
 - **Name:** GitHub Actions CI
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2837,8 +2837,8 @@ CI runs on push to main and on pull requests. The Rust job uses stable with rust
 
 **Acceptance criteria**
 
-- [ ] The workflow file matches those four jobs.
-- [ ] Local fmt, clippy, cargo test, npm test, and tsc use the same commands.
+- [x] The workflow file matches those four jobs.
+- [x] Local fmt, clippy, cargo test, npm test, and tsc use the same commands.
 
 **Test cases**
 
@@ -2866,11 +2866,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** ci.yml runs fmt, clippy, cargo test, and the web tests. This pass ran the web tests (5 passed), tsc, the server suite, lib tests, grants, ship_core, and fuzz_smoke.
 
 ### DEVOPS-02 Release workflow
 
