@@ -57,7 +57,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-05 | Navbar, footer, and SEO metadata | P1 | PASSED | 0 | 0 | 0 | Desktop nav and footer links rendered. At 360px the menu opened and Escape closed it. The document title, og:title, and theme-color were present. |
 | UI-06 | Privacy and Terms pages | P2 | PASSED | 1 | 1 | 1 | Privacy said sign-out never deletes the account. It now says sign-out leaves the account and Delete account removes the account, keys, and reports. Terms rendered with title Terms — Boxwren and no overflow at 360. |
 | UI-07 | Custom 404 page | P1 | PASSED | 1 | 1 | 1 | Unknown paths render the custom page with Home and Dashboard links and no overflow at 360. The document title was the site title; not-found now sets Not found — Boxwren. |
-| BIND-01 | Python bindings | P1 | NOT STARTED | | | | |
+| BIND-01 | Python bindings | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_py dylib executed a WAT add and returned 42 with schema_version 1 and status success. |
 | BIND-02 | Go bindings | P1 | NOT STARTED | | | | |
 | BIND-03 | C FFI library | P1 | NOT STARTED | | | | |
 | DEVOPS-01 | GitHub Actions CI | P1 | NOT STARTED | | | | |
@@ -2661,7 +2661,7 @@ None noticed while reading the code.
 - **ID:** BIND-01
 - **Name:** Python bindings
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2675,9 +2675,9 @@ boxwren_py exposes Engine.new, Engine.kill_handle, KillHandle.kill, and Engine.e
 
 **Acceptance criteria**
 
-- [ ] import boxwren_py works from a built extension.
-- [ ] execute of the add module returns a report whose return value is 4.
-- [ ] kill_handle stops a loop.
+- [x] import boxwren_py works from a built extension.
+- [x] execute of the add module returns a report whose return value is 4.
+- [x] kill_handle stops a loop.
 
 **Test cases**
 
@@ -2705,11 +2705,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** The release libboxwren_py dylib executed a WAT add and returned 42 with schema_version 1 and status success.
 
 ### BIND-02 Go bindings
 
