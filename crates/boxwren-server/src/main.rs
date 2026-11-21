@@ -166,7 +166,7 @@ fn cors_layer(origins: &[String]) -> CorsLayer {
         .collect();
     CorsLayer::new()
         .allow_origin(AllowOrigin::list(values))
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
         .allow_headers([
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
@@ -234,7 +234,11 @@ fn rate_limit_key(headers: &HeaderMap) -> String {
     headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .map(|s| format!("auth:{}", &s[..s.len().min(48)]))
+        .map(|header| {
+            use sha2::{Digest, Sha256};
+            // Hash the whole header. A 48-character prefix collides for real bearer tokens.
+            format!("auth:{}", hex::encode(Sha256::digest(header.as_bytes())))
+        })
         .unwrap_or_else(|| "anon".into())
 }
 
@@ -297,6 +301,13 @@ async fn delete_key(
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     let account = require_account(&state, &headers)?;
+    let keys = state.db.list_keys(&account.id)?;
+    if !keys.iter().any(|key| key.id == id) {
+        return Err(ApiError::not_found("key not found"));
+    }
+    if keys.len() <= 1 {
+        return Err(ApiError::bad("cannot revoke the last API key".into()));
+    }
     if !state.db.delete_key(&account.id, &id)? {
         return Err(ApiError::not_found("key not found"));
     }
@@ -869,6 +880,37 @@ mod tests {
             .get("access-control-allow-origin")
             .and_then(|v| v.to_str().ok());
         assert_eq!(allow, Some("http://localhost:3000"));
+    }
+
+    #[test]
+    fn rate_limit_keys_do_not_collapse_long_bearer_tokens() {
+        let shared = "x".repeat(41);
+        let mut first = HeaderMap::new();
+        first.insert(
+            axum::http::header::AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {shared}AAA")).unwrap(),
+        );
+        let mut second = HeaderMap::new();
+        second.insert(
+            axum::http::header::AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {shared}BBB")).unwrap(),
+        );
+        assert_ne!(rate_limit_key(&first), rate_limit_key(&second));
+        assert_eq!(rate_limit_key(&HeaderMap::new()), "anon");
+    }
+
+    #[tokio::test]
+    async fn last_api_key_cannot_be_revoked() {
+        let app = build_app(test_state(100), &parse_cors_origins(None));
+        let key = create_account_key(&app, "last@example.com").await;
+        let listed = send(&app, "GET", "/v1/keys", Some(&key), "").await;
+        let body: serde_json::Value = serde_json::from_str(&body_string(listed).await).unwrap();
+        let id = body["keys"][0]["id"].as_str().unwrap();
+        let denied = send(&app, "DELETE", &format!("/v1/keys/{id}"), Some(&key), "").await;
+        assert_eq!(denied.status(), StatusCode::BAD_REQUEST);
+        assert!(body_string(denied).await.contains("last API key"));
+        let me = send(&app, "GET", "/v1/me", Some(&key), "").await;
+        assert_eq!(me.status(), StatusCode::OK);
     }
 
     async fn send(

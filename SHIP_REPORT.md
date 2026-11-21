@@ -33,7 +33,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | AUTH-03 | Create and list API keys | P0 | PASSED | 0 | 0 | 0 | List returned prefix and name, not the raw key. Empty and 81-character names were 400. A name containing a script tag was stored and the new key authenticated. |
 | AUTH-04 | Dashboard sign-out | P1 | NOT STARTED | | | | |
 | AUTH-05 | Delete account | P0 | PASSED | 0 | 0 | 0 | DELETE /v1/me returned 204 on both hosts. The old key then returned 401. The same email could sign up again. |
-| AUTH-06 | Revoke API key | P0 | NOT STARTED | | | | |
+| AUTH-06 | Revoke API key | P0 | PASSED | 1 | 1 | 0 | Confirmed the API revoked the last key and the bearer then returned 401. Both hosts now return 400 cannot revoke the last API key and the original key still works. A second key can still be revoked. Server regression last_api_key_cannot_be_revoked passed. The same server change also allows CORS DELETE and hashes the full Authorization header for the rate-limit bucket. |
 | RUN-01 | Create and list runs | P0 | PASSED | 0 | 0 | 0 | WAT add module returned success and return_value 4 on both hosts. The run appeared in that account's list. Empty module and missing module were 400. Unauthenticated POST was 401. |
 | RUN-02 | Get run by id | P0 | PASSED | 0 | 0 | 0 | Owner GET returned the report and return_value 4. Unknown ids returned 404 on both hosts. |
 | RUN-03 | Live kill on boxwren-server | P0 | PASSED | 0 | 0 | 0 | wait false returned running. POST kill returned 202 and the stored report status was killed. A finished run returned 404 run not in flight. |
@@ -1348,7 +1348,7 @@ Confirm dialog, button placement, and the signed-out state. Escape dismisses the
 - **ID:** AUTH-06
 - **Name:** Revoke API key
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1362,9 +1362,9 @@ DELETE /v1/keys/{id} deletes that key only when it belongs to the caller. Missin
 
 **Acceptance criteria**
 
-- [ ] Revoking a listed key makes that raw key return 401.
-- [ ] Another account's key id returns 404 and the key still works for its owner.
-- [ ] The last remaining key cannot be revoked from the dashboard control.
+- [x] Revoking a listed key makes that raw key return 401.
+- [x] Another account's key id returns 404 and the key still works for its owner.
+- [x] The last remaining key cannot be revoked from the dashboard control.
 
 **Test cases**
 
@@ -1393,11 +1393,11 @@ Revoke button disabled state, title tooltip, and the table at 360px.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 1
+- **Bugs Fixed:** 1
+- **UI Issues Fixed:** 0
+- **Files Changed:** crates/boxwren-server/src/main.rs, web/app/v1/keys/[id]/route.ts
+- **Notes:** Confirmed the API revoked the last key and the bearer then returned 401. Both hosts now return 400 cannot revoke the last API key and the original key still works. A second key can still be revoked. Server regression last_api_key_cannot_be_revoked passed. The same server change also allows CORS DELETE and hashes the full Authorization header for the rate-limit bucket.
 
 ### RUN-01 Create and list runs
 
