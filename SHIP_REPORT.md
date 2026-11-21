@@ -49,7 +49,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | API-02 | KEYWARDEN_URL run preflight | P1 | PASSED | 0 | 0 | 0 | With the stub on :8899, entry run was allowed and entry deny-me returned 403 on both the server and Next. The guest did not start on deny. |
 | API-03 | Public POST /v1/demo | P1 | PASSED | 0 | 0 | 0 | secret, loop, network, and clean returned reports. loop run was timed_out. loop kill was killed. clean return_value was 4. An unknown scenario was 400. |
 | WEB-01 | DATABASE_URL required at Next boot | P0 | PASSED | 0 | 0 | 0 | next dev with an empty DATABASE_URL printed DATABASE_URL is not set and exited. The normal server on :3010 booted with the env file set. |
-| WEB-02 | Production build and CLI binary fetch | P1 | NOT STARTED | | | | |
+| WEB-02 | Production build and CLI binary fetch | P1 | PASSED | 0 | 0 | 0 | npm run build fetched the v0.2.4 musl and darwin binaries, next build exited 0, and next start on :3020 served home 200, health 200, and a clean demo returning 4. Chrome on that production server ran the secret scenario and showed filesystem /etc/passwd denied. |
 | UI-01 | Marketing home page | P1 | NOT STARTED | | | | |
 | UI-02 | Hero sandbox demo | P1 | NOT STARTED | | | | |
 | UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | NOT STARTED | | | | |
@@ -2218,7 +2218,7 @@ None noticed while reading the code.
 - **ID:** WEB-02
 - **Name:** Production build and CLI binary fetch
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2233,9 +2233,9 @@ npm run build runs fetch-boxwren.mjs, then next build. The script downloads boxw
 
 **Acceptance criteria**
 
-- [ ] A production build finishes when the release assets exist.
-- [ ] POST /v1/runs and POST /v1/demo can spawn that binary.
-- [ ] The client bundle does not contain the database URL.
+- [x] A production build finishes when the release assets exist.
+- [x] POST /v1/runs and POST /v1/demo can spawn that binary.
+- [x] The client bundle does not contain the database URL.
 
 **Test cases**
 
@@ -2263,11 +2263,11 @@ Load the production server and confirm the home page renders.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** npm run build fetched the v0.2.4 musl and darwin binaries, next build exited 0, and next start on :3020 served home 200, health 200, and a clean demo returning 4. Chrome on that production server ran the secret scenario and showed filesystem /etc/passwd denied.
 
 ### UI-01 Marketing home page
 
