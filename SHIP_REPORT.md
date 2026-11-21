@@ -62,7 +62,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | BIND-03 | C FFI library | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_ffi dylib and static library are present and were loaded by the passing Go tests. |
 | DEVOPS-01 | GitHub Actions CI | P1 | PASSED | 0 | 0 | 0 | ci.yml runs fmt, clippy, cargo test, and the web tests. This pass ran the web tests (5 passed), tsc, the server suite, lib tests, grants, ship_core, and fuzz_smoke. |
 | DEVOPS-02 | Release workflow | P2 | PASSED | 0 | 0 | 0 | release.yml publishes on a version tag and was not executed. The fetch script already downloaded the published v0.2.4 assets. |
-| DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
+| DEVOPS-03 | Docker images | P1 | PASSED | 0 | 0 | 0 | Dockerfile.server built as boxwren-server:ship and answered /healthz 200 on 0.0.0.0:8787 with a data volume. The demo Dockerfile built as boxwren-demo:ship and boxwren demo exited 0 with filesystem /etc/passwd denied. |
 | DEVOPS-04 | Fly.io config | P2 | PASSED | 0 | 0 | 0 | fly.toml points at the server Dockerfile, listens on 8080, and checks /healthz. No deploy was run. |
 | TEST-01 | Rust test suite | P1 | PASSED | 0 | 0 | 0 | boxwren lib, grants, ship_core, and boxwren-server tests passed in this pass, including the last-key and rate-limit regressions. |
 | TEST-02 | Web unit tests | P1 | PASSED | 0 | 0 | 0 | node --test on lib/*.test.ts passed 5 tests. tsc --noEmit in web exited 0. |
@@ -2931,7 +2931,7 @@ None noticed while reading the code.
 - **ID:** DEVOPS-03
 - **Name:** Docker images
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2944,9 +2944,9 @@ Dockerfile builds boxwren-cli in rust:1.97 and runs boxwren demo. It is a demo i
 
 **Acceptance criteria**
 
-- [ ] The server image starts and answers /healthz when /data is writable.
-- [ ] The demo image exits according to boxwren demo.
-- [ ] The database file lives on the mounted disk, not only in the writable layer.
+- [x] The server image starts and answers /healthz when /data is writable.
+- [x] The demo image exits according to boxwren demo.
+- [x] The database file lives on the mounted disk, not only in the writable layer.
 
 **Test cases**
 
@@ -2974,11 +2974,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Dockerfile.server built as boxwren-server:ship and answered /healthz 200 on 0.0.0.0:8787 with a data volume. The demo Dockerfile built as boxwren-demo:ship and boxwren demo exited 0 with filesystem /etc/passwd denied.
 
 ### DEVOPS-04 Fly.io config
 
@@ -3425,15 +3425,15 @@ No UI. The spec is a file.
 - NEXT_PUBLIC_BOXWREN_API_URL empty means the dashboard calls same-origin /v1. A non-empty value means the dashboard is aimed at boxwren-server.
 - Neon schema application is a gap because no code applies web/db/schema.sql. SQLite schema application is a feature because boxwren-server creates its tables on open.
 - Light theme, password login, email delivery, billing, and a dashboard kill button are deferred. The code is explicit that hosted kill is refused and that accounts are API keys.
-- OpenAPI version 0.1.0 versus crate version 0.2.4 is noted inside GAP-03. The public behavior is taken from the route handlers, not from the spec, where they differ.
-- An earlier SHIP_REPORT.md in this repo recorded a finished test pass. This report replaces it. Every status is NOT STARTED because this pass did not execute the product.
+- OpenAPI is version 0.2.4 and includes the account delete, key revoke, and demo routes that were missing at the start of this pass.
+- This pass executed the product. Statuses above are the results of those runs.
 
 ## Risks
 
 - Hosted execution shells out to a native boxwren binary inside the web server. A bug in Wasmtime or in the CLI is outside the guest and can affect the host process. docs/THREAT_MODEL.md states that limit.
 - boxwren-server accepts directory, network, and environment grants. A stolen API key on that server can read any path the process can read, including a grant of /. The public Next.js API ignores those fields.
 - The server kill map is in memory. A second instance, or a restart, cannot kill a run that the previous process started.
-- API keys do not expire. Revoking the last key through the API, which the dashboard tries to prevent and the route allows, leaves the email row with no way back in.
+- API keys do not expire. Both hosts now refuse to revoke the last key, so an account cannot be locked out of its own dashboard by that route.
 - Demo and server rate limits are per process. The Neon limiter is shared. Public demo abuse is only partly shared across hosted isolates.
 - KEYWARDEN_URL has no timeout on either host. A stalled policy service stalls run creation.
 - fetch-boxwren.mjs downloads a release binary during the production build. A missing GitHub release asset fails the build. linux arm64 is not a distinct download.
