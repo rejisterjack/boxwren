@@ -63,7 +63,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | DEVOPS-01 | GitHub Actions CI | P1 | PASSED | 0 | 0 | 0 | ci.yml runs fmt, clippy, cargo test, and the web tests. This pass ran the web tests (5 passed), tsc, the server suite, lib tests, grants, ship_core, and fuzz_smoke. |
 | DEVOPS-02 | Release workflow | P2 | PASSED | 0 | 0 | 0 | release.yml publishes on a version tag and was not executed. The fetch script already downloaded the published v0.2.4 assets. |
 | DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
-| DEVOPS-04 | Fly.io config | P2 | NOT STARTED | | | | |
+| DEVOPS-04 | Fly.io config | P2 | PASSED | 0 | 0 | 0 | fly.toml points at the server Dockerfile, listens on 8080, and checks /healthz. No deploy was run. |
 | TEST-01 | Rust test suite | P1 | NOT STARTED | | | | |
 | TEST-02 | Web unit tests | P1 | NOT STARTED | | | | |
 | FUZZ-01 | fuzz_smoke guest modules | P2 | NOT STARTED | | | | |
@@ -2985,7 +2985,7 @@ None noticed while reading the code.
 - **ID:** DEVOPS-04
 - **Name:** Fly.io config
 - **Priority:** P2
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2997,9 +2997,9 @@ fly.toml describes one app, boxwren-api, in region iad, built from Dockerfile.se
 
 **Acceptance criteria**
 
-- [ ] The internal port matches the image EXPOSE and BOXWREN_LISTEN.
-- [ ] The sqlite path is on the mount.
-- [ ] auto_stop_machines is off so the in-memory kill map is not dropped by an idle stop.
+- [x] The internal port matches the image EXPOSE and BOXWREN_LISTEN.
+- [x] The sqlite path is on the mount.
+- [x] auto_stop_machines is off so the in-memory kill map is not dropped by an idle stop.
 
 **Test cases**
 
@@ -3027,11 +3027,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** fly.toml points at the server Dockerfile, listens on 8080, and checks /healthz. No deploy was run.
 
 ### TEST-01 Rust test suite
 
