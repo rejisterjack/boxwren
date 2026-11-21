@@ -70,7 +70,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | META-01 | Favicon, manifest, Open Graph, and theme color | P2 | PASSED | 0 | 0 | 0 | favicon.svg, favicon.png, apple-icon.png, both icons, and manifest.json returned 200. og:title and theme-color were in the home document. |
 | GAP-01 | Document or automate Neon schema apply | P0 | PASSED | 0 | 0 | 0 | HOSTED.md now says to apply web/db/schema.sql with psql and that the statements are idempotent. boxwren-server still creates its own SQLite schema. |
 | GAP-02 | Global 500 error page | P1 | PASSED | 0 | 0 | 0 | app/error.tsx renders a 500 page without the thrown message. A temporary throwing route showed Something went wrong and hid the secret string. The page sets the document title to Error — Boxwren. |
-| GAP-03 | OpenAPI matches live routes | P1 | NOT STARTED | | | | |
+| GAP-03 | OpenAPI matches live routes | P1 | PASSED | 0 | 0 | 0 | openapi.yaml is version 0.2.4 and now documents DELETE /v1/me, DELETE /v1/keys/{id} including the last-key 400, and POST /v1/demo including 429 and 503. |
 
 ## Gaps
 
@@ -3367,7 +3367,7 @@ Same checks as UI-07: alignment, dark theme, 360 to 1440, focus, console.
 - **ID:** GAP-03
 - **Name:** OpenAPI matches live routes
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -3382,9 +3382,9 @@ This is half-built. openapi.yaml documents GET /healthz, POST /v1/accounts, GET 
 
 **Acceptance criteria**
 
-- [ ] DELETE /v1/me and DELETE /v1/keys/{id} are in the spec with 204, 401, and 404.
-- [ ] POST /v1/demo lists the four scenarios and 400, 429, and 503.
-- [ ] Every path in the spec exists in the Next app or in boxwren-server.
+- [x] DELETE /v1/me and DELETE /v1/keys/{id} are in the spec with 204, 401, and 404.
+- [x] POST /v1/demo lists the four scenarios and 400, 429, and 503.
+- [x] Every path in the spec exists in the Next app or in boxwren-server.
 
 **Test cases**
 
@@ -3412,11 +3412,11 @@ No UI. The spec is a file.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** docs/openapi.yaml
+- **Notes:** openapi.yaml is version 0.2.4 and now documents DELETE /v1/me, DELETE /v1/keys/{id} including the last-key 400, and POST /v1/demo including 429 and 503.
 
 ## Assumptions
 
