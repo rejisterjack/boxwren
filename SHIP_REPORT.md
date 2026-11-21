@@ -25,7 +25,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | HOOKS-01 | Library Keywarden preflight hook | P1 | PASSED | 0 | 0 | 0 | grants.rs preflight_deny_returns_policy_before_the_guest passed. The library trait does not open a network connection. |
 | CLI-01 | boxwren run | P0 | PASSED | 0 | 0 | 0 | JSON report for the add module exited 0. Missing file exited 2. Bad memory unit exited 2. Guest denial and rejection printed a report and exited 1. SIGINT killed a loop. |
 | CLI-02 | boxwren demo | P0 | PASSED | 0 | 0 | 0 | boxwren demo --report json exited 0. Secret, network, and memory probes were all blocked. |
-| CLI-03 | export-undoom | P1 | NOT STARTED | | | | |
+| CLI-03 | export-undoom | P1 | PASSED | 0 | 0 | 0 | A success report wrapped to agent boxwren, name boxwren-run, with the original report under metadata.report_json. Empty input exited 2. |
 | CLI-04 | run-py and run-js | P1 | NOT STARTED | | | | |
 | API-01 | Health check | P0 | NOT STARTED | | | | |
 | AUTH-01 | Email signup and initial API key | P0 | NOT STARTED | | | | |
@@ -906,7 +906,7 @@ None noticed while reading the code.
 - **ID:** CLI-03
 - **Name:** export-undoom
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -918,9 +918,9 @@ boxwren export-undoom REPORT wraps a schema v1 report as an Undoom document with
 
 **Acceptance criteria**
 
-- [ ] A valid report JSON becomes a document that still contains the original report.
-- [ ] A missing file and invalid JSON fail before writing a partial document.
-- [ ] --output creates the file the caller named.
+- [x] A valid report JSON becomes a document that still contains the original report.
+- [x] A missing file and invalid JSON fail before writing a partial document.
+- [x] --output creates the file the caller named.
 
 **Test cases**
 
@@ -948,11 +948,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** A success report wrapped to agent boxwren, name boxwren-run, with the original report under metadata.report_json. Empty input exited 2.
 
 ### CLI-04 run-py and run-js
 
