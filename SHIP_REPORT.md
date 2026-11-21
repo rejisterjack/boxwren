@@ -18,7 +18,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SANDBOX-02 | Directory preopen grants | P0 | PASSED | 0 | 0 | 0 | grants.rs read-only, read-write, and escape tests passed. CLI missing directory failed before start. Python read of a ro mount returned hello, write and .. escape returned EPERM. |
 | SANDBOX-03 | Network deny-by-default and allow-net | P0 | PASSED | 0 | 0 | 0 | net.wasm and demo denied 127.0.0.1:1. grants.rs network_is_denied_unless_allowlisted, hostname_lookup_stays_off_for_an_ip_grant, and hostname_grant_can_connect passed. |
 | SANDBOX-04 | Environment grants | P0 | PASSED | 0 | 0 | 0 | Missing host variable failed before start. grants.rs env_parse and environment_is_not_inherited_unless_granted passed. Python os.getenv of an explicit NAME=VALUE grant printed hello-env. |
-| SANDBOX-05 | Root and home directory warnings | P1 | NOT STARTED | | | | |
+| SANDBOX-05 | Root and home directory warnings | P1 | PASSED | 0 | 0 | 0 | CLI --allow-dir /:/:ro succeeded and warned that the grant is the filesystem root. grants.rs root_and_home_grants_are_warned_and_not_rewritten passed. |
 | LIMITS-01 | Fuel, memory, wall clock, stdio, and module size caps | P0 | NOT STARTED | | | | |
 | LIMITS-02 | Kill, timeout, and fuel exhaustion classification | P0 | NOT STARTED | | | | |
 | REPORT-01 | Schema v1 JSON execution report | P0 | NOT STARTED | | | | |
@@ -527,7 +527,7 @@ None noticed while reading the code.
 - **ID:** SANDBOX-05
 - **Name:** Root and home directory warnings
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -540,9 +540,9 @@ A grant of / or of the home directory is allowed and named in report.warnings. B
 
 **Acceptance criteria**
 
-- [ ] Granting / succeeds and warnings is non-empty.
-- [ ] Granting the home directory succeeds and warnings names that choice.
-- [ ] A normal temp-dir grant does not add that warning.
+- [x] Granting / succeeds and warnings is non-empty.
+- [x] Granting the home directory succeeds and warnings names that choice.
+- [x] A normal temp-dir grant does not add that warning.
 
 **Test cases**
 
@@ -570,11 +570,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** CLI --allow-dir /:/:ro succeeded and warned that the grant is the filesystem root. grants.rs root_and_home_grants_are_warned_and_not_rewritten passed.
 
 ### LIMITS-01 Fuel, memory, wall clock, stdio, and module size caps
 
