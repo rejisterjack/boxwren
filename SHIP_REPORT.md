@@ -47,7 +47,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SEC-02 | Hosted Next.js security headers | P1 | PASSED | 0 | 0 | 0 | Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent. |
 | SEC-03 | Hosted run clamps and guest argv isolation | P0 | PASSED | 0 | 0 | 0 | fuel 1e18 was clamped to 1e9 and the loop exhausted fuel in 290ms instead of the requested 60s wall. Entry -evil was 400. A string args value was 400. Args that look like grants stayed behind -- and the add module still returned 4. |
 | API-02 | KEYWARDEN_URL run preflight | P1 | PASSED | 0 | 0 | 0 | With the stub on :8899, entry run was allowed and entry deny-me returned 403 on both the server and Next. The guest did not start on deny. |
-| API-03 | Public POST /v1/demo | P1 | NOT STARTED | | | | |
+| API-03 | Public POST /v1/demo | P1 | PASSED | 0 | 0 | 0 | secret, loop, network, and clean returned reports. loop run was timed_out. loop kill was killed. clean return_value was 4. An unknown scenario was 400. |
 | WEB-01 | DATABASE_URL required at Next boot | P0 | NOT STARTED | | | | |
 | WEB-02 | Production build and CLI binary fetch | P1 | NOT STARTED | | | | |
 | UI-01 | Marketing home page | P1 | NOT STARTED | | | | |
@@ -2107,7 +2107,7 @@ Dashboard shows the 403 text in the error panel.
 - **ID:** API-03
 - **Name:** Public POST /v1/demo
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2121,10 +2121,10 @@ POST /v1/demo takes {scenario, action}. Scenarios are secret, loop, network, and
 
 **Acceptance criteria**
 
-- [ ] Each of the four scenarios returns a JSON report.
-- [ ] secret does not return file contents.
-- [ ] clean reports a successful add.
-- [ ] Unknown scenario is 400 and does not spawn the CLI.
+- [x] Each of the four scenarios returns a JSON report.
+- [x] secret does not return file contents.
+- [x] clean reports a successful add.
+- [x] Unknown scenario is 400 and does not spawn the CLI.
 
 **Test cases**
 
@@ -2152,11 +2152,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** secret, loop, network, and clean returned reports. loop run was timed_out. loop kill was killed. clean return_value was 4. An unknown scenario was 400.
 
 ### WEB-01 DATABASE_URL required at Next boot
 
