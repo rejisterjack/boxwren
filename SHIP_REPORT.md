@@ -67,7 +67,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | TEST-01 | Rust test suite | P1 | PASSED | 0 | 0 | 0 | boxwren lib, grants, ship_core, and boxwren-server tests passed in this pass, including the last-key and rate-limit regressions. |
 | TEST-02 | Web unit tests | P1 | PASSED | 0 | 0 | 0 | node --test on lib/*.test.ts passed 5 tests. tsc --noEmit in web exited 0. |
 | FUZZ-01 | fuzz_smoke guest modules | P2 | PASSED | 0 | 0 | 0 | release fuzz_smoke random_modules_do_not_panic passed. longer_random_modules stayed ignored. |
-| META-01 | Favicon, manifest, Open Graph, and theme color | P2 | NOT STARTED | | | | |
+| META-01 | Favicon, manifest, Open Graph, and theme color | P2 | PASSED | 0 | 0 | 0 | favicon.svg, favicon.png, apple-icon.png, both icons, and manifest.json returned 200. og:title and theme-color were in the home document. |
 | GAP-01 | Document or automate Neon schema apply | P0 | NOT STARTED | | | | |
 | GAP-02 | Global 500 error page | P1 | NOT STARTED | | | | |
 | GAP-03 | OpenAPI matches live routes | P1 | NOT STARTED | | | | |
@@ -3203,7 +3203,7 @@ None noticed while reading the code.
 - **ID:** META-01
 - **Name:** Favicon, manifest, Open Graph, and theme color
 - **Priority:** P2
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -3218,9 +3218,9 @@ The layout points at favicon.svg, favicon.png, apple-icon.png, manifest.json, an
 
 **Acceptance criteria**
 
-- [ ] The browser requests a favicon and gets 200.
-- [ ] /manifest.json is valid JSON and its icon paths return 200.
-- [ ] og:title and the theme color are present in the document.
+- [x] The browser requests a favicon and gets 200.
+- [x] /manifest.json is valid JSON and its icon paths return 200.
+- [x] og:title and the theme color are present in the document.
 
 **Test cases**
 
@@ -3248,11 +3248,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** favicon.svg, favicon.png, apple-icon.png, both icons, and manifest.json returned 200. og:title and theme-color were in the home document.
 
 ### GAP-01 Document or automate Neon schema apply
 
