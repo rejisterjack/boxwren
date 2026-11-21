@@ -16,7 +16,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CORE-02 | KillHandle cross-thread kill | P0 | PASSED | 0 | 0 | 0 | Library kill_is_not_a_timeout passed. CLI SIGINT on a 5s loop returned status killed in 177ms and exit 1. A second process running the add module still returned 4. |
 | SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | PASSED | 0 | 0 | 0 | demo and secret.wasm denied /etc/passwd and named that path. grants.rs secret_read_is_blocked_and_named and path_open_is_denied_and_named passed. Python open of /etc/passwd did not print file contents. |
 | SANDBOX-02 | Directory preopen grants | P0 | PASSED | 0 | 0 | 0 | grants.rs read-only, read-write, and escape tests passed. CLI missing directory failed before start. Python read of a ro mount returned hello, write and .. escape returned EPERM. |
-| SANDBOX-03 | Network deny-by-default and allow-net | P0 | NOT STARTED | | | | |
+| SANDBOX-03 | Network deny-by-default and allow-net | P0 | PASSED | 0 | 0 | 0 | net.wasm and demo denied 127.0.0.1:1. grants.rs network_is_denied_unless_allowlisted, hostname_lookup_stays_off_for_an_ip_grant, and hostname_grant_can_connect passed. |
 | SANDBOX-04 | Environment grants | P0 | NOT STARTED | | | | |
 | SANDBOX-05 | Root and home directory warnings | P1 | NOT STARTED | | | | |
 | LIMITS-01 | Fuel, memory, wall clock, stdio, and module size caps | P0 | NOT STARTED | | | | |
@@ -419,7 +419,7 @@ None noticed while reading the code.
 - **ID:** SANDBOX-03
 - **Name:** Network deny-by-default and allow-net
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -432,9 +432,9 @@ Default grants include no network. --allow-net accepts an IP, ip:port, hostname,
 
 **Acceptance criteria**
 
-- [ ] A connect with no grant is denied and journaled.
-- [ ] An explicit ip:port grant allows that target and denies a different port.
-- [ ] A hostname grant is what enables lookup. Without it, names do not resolve through the sandbox.
+- [x] A connect with no grant is denied and journaled.
+- [x] An explicit ip:port grant allows that target and denies a different port.
+- [x] A hostname grant is what enables lookup. Without it, names do not resolve through the sandbox.
 
 **Test cases**
 
@@ -462,11 +462,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** net.wasm and demo denied 127.0.0.1:1. grants.rs network_is_denied_unless_allowlisted, hostname_lookup_stays_off_for_an_ip_grant, and hostname_grant_can_connect passed.
 
 ### SANDBOX-04 Environment grants
 
