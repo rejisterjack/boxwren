@@ -11,7 +11,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | ID | Feature | Priority | Status | Bugs Found | Bugs Fixed | UI Issues Fixed | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | DATA-01 | Neon Postgres schema | P0 | PASSED | 0 | 0 | 0 | Live Neon: four tables, FKs, unique email and hash, runs index. Duplicate email 23505. SQL-like text stored as data. |
-| DATA-02 | SQLite schema auto-init | P0 | NOT STARTED | | | | |
+| DATA-02 | SQLite schema auto-init | P0 | PASSED | 0 | 0 | 0 | Fresh sqlite created accounts, api_keys, runs. Restart kept the row. Bad paths fail. |
 | CORE-01 | Wasmtime engine execute | P0 | NOT STARTED | | | | |
 | CORE-02 | KillHandle cross-thread kill | P0 | NOT STARTED | | | | |
 | SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | NOT STARTED | | | | |
@@ -147,7 +147,7 @@ None.
 - **ID:** DATA-02
 - **Name:** SQLite schema auto-init
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -159,9 +159,9 @@ boxwren-server opens the SQLite file from --db or BOXWREN_DB and creates account
 
 **Acceptance criteria**
 
-- [ ] Starting the server against a new file creates the three tables.
-- [ ] Starting again against the same file does not drop rows.
-- [ ] The parent directory must exist. The code opens the path; it does not mkdir.
+- [x] Starting the server against a new file creates the three tables.
+- [x] Starting again against the same file does not drop rows.
+- [x] The parent directory must exist. The code opens the path; it does not mkdir.
 
 **Test cases**
 
@@ -189,11 +189,11 @@ None.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Fresh file /tmp/boxwren-ship-data02.sqlite created accounts, api_keys, and runs. No rate_limits table. POST /v1/accounts stored data02@example.com; the raw key was not equal to the hash column (hash length 64, prefix length 10). Restart kept the row. A missing parent directory and a directory path both exited with "unable to open database file". A zero-byte file initialized the three tables. The non-atomic create_account path was not reproduced, so it was not changed.
 
 ### CORE-01 Wasmtime engine execute
 
