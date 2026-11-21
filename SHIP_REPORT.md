@@ -26,7 +26,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CLI-01 | boxwren run | P0 | PASSED | 0 | 0 | 0 | JSON report for the add module exited 0. Missing file exited 2. Bad memory unit exited 2. Guest denial and rejection printed a report and exited 1. SIGINT killed a loop. |
 | CLI-02 | boxwren demo | P0 | PASSED | 0 | 0 | 0 | boxwren demo --report json exited 0. Secret, network, and memory probes were all blocked. |
 | CLI-03 | export-undoom | P1 | PASSED | 0 | 0 | 0 | A success report wrapped to agent boxwren, name boxwren-run, with the original report under metadata.report_json. Empty input exited 2. |
-| CLI-04 | run-py and run-js | P1 | NOT STARTED | | | | |
+| CLI-04 | run-py and run-js | P1 | PASSED | 0 | 0 | 0 | Release binary has both commands. run-py printed hello-from-py. run-js printed js-ok. Ungranted /etc/passwd did not leak. Empty Python file succeeded with empty stdout. |
 | API-01 | Health check | P0 | NOT STARTED | | | | |
 | AUTH-01 | Email signup and initial API key | P0 | NOT STARTED | | | | |
 | AUTH-02 | Bearer API key authentication | P0 | NOT STARTED | | | | |
@@ -959,7 +959,7 @@ None noticed while reading the code.
 - **ID:** CLI-04
 - **Name:** run-py and run-js
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -973,10 +973,10 @@ With the interpreters feature, run-py executes a Python file inside bundled Micr
 
 **Acceptance criteria**
 
-- [ ] A Python file that prints hello returns a report under the limits.
-- [ ] A JavaScript file does the same.
-- [ ] The commands are absent when the binary is built without the interpreters feature.
-- [ ] Grants and limits behave as they do for wasm.
+- [x] A Python file that prints hello returns a report under the limits.
+- [x] A JavaScript file does the same.
+- [x] The commands are absent when the binary is built without the interpreters feature.
+- [x] Grants and limits behave as they do for wasm.
 
 **Test cases**
 
@@ -1004,11 +1004,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Release binary has both commands. run-py printed hello-from-py. run-js printed js-ok. Ungranted /etc/passwd did not leak. Empty Python file succeeded with empty stdout.
 
 ### API-01 Health check
 
