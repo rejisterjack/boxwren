@@ -15,7 +15,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CORE-01 | Wasmtime engine execute | P0 | PASSED | 0 | 0 | 0 | lib add_returns_four passed. CLI add returned 4, exit 0. Empty, whitespace, and non-module rejected without a crash. Missing export rejected. 100 repeats stayed success. Two parallel CLI runs both returned 4. |
 | CORE-02 | KillHandle cross-thread kill | P0 | PASSED | 0 | 0 | 0 | Library kill_is_not_a_timeout passed. CLI SIGINT on a 5s loop returned status killed in 177ms and exit 1. A second process running the add module still returned 4. |
 | SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | PASSED | 0 | 0 | 0 | demo and secret.wasm denied /etc/passwd and named that path. grants.rs secret_read_is_blocked_and_named and path_open_is_denied_and_named passed. Python open of /etc/passwd did not print file contents. |
-| SANDBOX-02 | Directory preopen grants | P0 | NOT STARTED | | | | |
+| SANDBOX-02 | Directory preopen grants | P0 | PASSED | 0 | 0 | 0 | grants.rs read-only, read-write, and escape tests passed. CLI missing directory failed before start. Python read of a ro mount returned hello, write and .. escape returned EPERM. |
 | SANDBOX-03 | Network deny-by-default and allow-net | P0 | NOT STARTED | | | | |
 | SANDBOX-04 | Environment grants | P0 | NOT STARTED | | | | |
 | SANDBOX-05 | Root and home directory warnings | P1 | NOT STARTED | | | | |
@@ -364,7 +364,7 @@ None noticed while reading the code.
 - **ID:** SANDBOX-02
 - **Name:** Directory preopen grants
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -377,10 +377,10 @@ A directory grant is host:guest, host:guest:ro, or host:guest:rw. The split is t
 
 **Acceptance criteria**
 
-- [ ] ro can read a file inside the guest mount and cannot write it.
-- [ ] rw can write inside the mount.
-- [ ] A path that climbs out of the preopen is denied.
-- [ ] A missing host directory fails the request before execution.
+- [x] ro can read a file inside the guest mount and cannot write it.
+- [x] rw can write inside the mount.
+- [x] A path that climbs out of the preopen is denied.
+- [x] A missing host directory fails the request before execution.
 
 **Test cases**
 
@@ -408,11 +408,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** grants.rs read-only, read-write, and escape tests passed. CLI missing directory failed before start. Python read of a ro mount returned hello, write and .. escape returned EPERM.
 
 ### SANDBOX-03 Network deny-by-default and allow-net
 
