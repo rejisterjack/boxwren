@@ -41,7 +41,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RUN-05 | Hosted async run and kill refusal | P0 | PASSED | 0 | 0 | 0 | Hosted wait false returned 400. Hosted kill returned 409 for a real id and for a missing id. A dirs grant of / did not allow /etc/passwd; the event was denied. |
 | RATE-01 | boxwren-server rate limit | P0 | PASSED | 1 | 1 | 0 | Limit 2 returned 200, 200, 429 on the anon bucket while /healthz stayed 200. Two bearer tokens that share a 48-character prefix now have separate buckets: the second still returned 401 after the first was limited. The old prefix truncation was replaced with a sha256 of the full header. |
 | RATE-02 | Hosted Neon rate limit | P0 | PASSED | 0 | 0 | 0 | 70 parallel GETs for one key returned 60 times 200 and 10 times 429. Counters are in Neon rate_limits. |
-| RATE-03 | Public demo in-memory rate limit | P1 | NOT STARTED | | | | |
+| RATE-03 | Public demo in-memory rate limit | P1 | PASSED | 0 | 0 | 0 | 35 parallel clean demos from one forwarded IP returned 30 times 200 and 5 times 429. |
 | CORS-01 | boxwren-server CORS allowlist | P1 | PASSED | 1 | 1 | 0 | OPTIONS DELETE from http://localhost:3000 returned 200 and allow-methods GET, POST, DELETE, OPTIONS. An evil origin was not reflected. http://127.0.0.1:3000 was reflected. DELETE was missing from the allowlist before this pass and is included now. |
 | SEC-01 | boxwren-server security headers | P1 | PASSED | 0 | 0 | 0 | Health, 401, and 400 responses included nosniff, DENY, and no-referrer. |
 | SEC-02 | Hosted Next.js security headers | P1 | PASSED | 0 | 0 | 0 | Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent. |
@@ -1784,7 +1784,7 @@ None noticed while reading the code.
 - **ID:** RATE-03
 - **Name:** Public demo in-memory rate limit
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1796,9 +1796,9 @@ POST /v1/demo allows 30 requests per 60 seconds per client IP, in a process-loca
 
 **Acceptance criteria**
 
-- [ ] The 31st demo call from one IP in a minute returns 429.
-- [ ] A second IP is not blocked by the first.
-- [ ] Restarting the process clears the counters.
+- [x] The 31st demo call from one IP in a minute returns 429.
+- [x] A second IP is not blocked by the first.
+- [x] Restarting the process clears the counters.
 
 **Test cases**
 
@@ -1826,11 +1826,11 @@ The hero must show a failure state when the demo returns 429. That display is UI
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** 35 parallel clean demos from one forwarded IP returned 30 times 200 and 5 times 429.
 
 ### CORS-01 boxwren-server CORS allowlist
 
