@@ -17,7 +17,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | PASSED | 0 | 0 | 0 | demo and secret.wasm denied /etc/passwd and named that path. grants.rs secret_read_is_blocked_and_named and path_open_is_denied_and_named passed. Python open of /etc/passwd did not print file contents. |
 | SANDBOX-02 | Directory preopen grants | P0 | PASSED | 0 | 0 | 0 | grants.rs read-only, read-write, and escape tests passed. CLI missing directory failed before start. Python read of a ro mount returned hello, write and .. escape returned EPERM. |
 | SANDBOX-03 | Network deny-by-default and allow-net | P0 | PASSED | 0 | 0 | 0 | net.wasm and demo denied 127.0.0.1:1. grants.rs network_is_denied_unless_allowlisted, hostname_lookup_stays_off_for_an_ip_grant, and hostname_grant_can_connect passed. |
-| SANDBOX-04 | Environment grants | P0 | NOT STARTED | | | | |
+| SANDBOX-04 | Environment grants | P0 | PASSED | 0 | 0 | 0 | Missing host variable failed before start. grants.rs env_parse and environment_is_not_inherited_unless_granted passed. Python os.getenv of an explicit NAME=VALUE grant printed hello-env. |
 | SANDBOX-05 | Root and home directory warnings | P1 | NOT STARTED | | | | |
 | LIMITS-01 | Fuel, memory, wall clock, stdio, and module size caps | P0 | NOT STARTED | | | | |
 | LIMITS-02 | Kill, timeout, and fuel exhaustion classification | P0 | NOT STARTED | | | | |
@@ -473,7 +473,7 @@ None noticed while reading the code.
 - **ID:** SANDBOX-04
 - **Name:** Environment grants
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -485,10 +485,10 @@ The guest starts with no environment. --allow-env NAME copies a host variable. N
 
 **Acceptance criteria**
 
-- [ ] An ungranted variable is not visible to the guest.
-- [ ] NAME copies the host value and records an env event.
-- [ ] NAME=VALUE sets that value even if the host variable differs.
-- [ ] A missing host variable for a copy grant fails the request.
+- [x] An ungranted variable is not visible to the guest.
+- [x] NAME copies the host value and records an env event.
+- [x] NAME=VALUE sets that value even if the host variable differs.
+- [x] A missing host variable for a copy grant fails the request.
 
 **Test cases**
 
@@ -516,11 +516,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Missing host variable failed before start. grants.rs env_parse and environment_is_not_inherited_unless_granted passed. Python os.getenv of an explicit NAME=VALUE grant printed hello-env.
 
 ### SANDBOX-05 Root and home directory warnings
 
