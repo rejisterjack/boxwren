@@ -40,7 +40,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RUN-04 | Cross-account run isolation | P0 | PASSED | 0 | 0 | 0 | Account B's list was empty. B's GET was 404. B's kill of A's in-flight server run was 404, and the owner could still kill it. |
 | RUN-05 | Hosted async run and kill refusal | P0 | PASSED | 0 | 0 | 0 | Hosted wait false returned 400. Hosted kill returned 409 for a real id and for a missing id. A dirs grant of / did not allow /etc/passwd; the event was denied. |
 | RATE-01 | boxwren-server rate limit | P0 | NOT STARTED | | | | |
-| RATE-02 | Hosted Neon rate limit | P0 | NOT STARTED | | | | |
+| RATE-02 | Hosted Neon rate limit | P0 | PASSED | 0 | 0 | 0 | 70 parallel GETs for one key returned 60 times 200 and 10 times 429. Counters are in Neon rate_limits. |
 | RATE-03 | Public demo in-memory rate limit | P1 | NOT STARTED | | | | |
 | CORS-01 | boxwren-server CORS allowlist | P1 | NOT STARTED | | | | |
 | SEC-01 | boxwren-server security headers | P1 | PASSED | 0 | 0 | 0 | Health, 401, and 400 responses included nosniff, DENY, and no-referrer. |
@@ -1730,7 +1730,7 @@ Plain text 429.
 - **ID:** RATE-02
 - **Name:** Hosted Neon rate limit
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1743,9 +1743,9 @@ gate() allows 60 requests per minute per bucket. With an Authorization header th
 
 **Acceptance criteria**
 
-- [ ] The 61st gated request in a minute returns 429.
-- [ ] Two different API keys do not share a bucket.
-- [ ] The raw key is not stored in rate_limits.
+- [x] The 61st gated request in a minute returns 429.
+- [x] Two different API keys do not share a bucket.
+- [x] The raw key is not stored in rate_limits.
 
 **Test cases**
 
@@ -1773,11 +1773,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** 70 parallel GETs for one key returned 60 times 200 and 10 times 429. Counters are in Neon rate_limits.
 
 ### RATE-03 Public demo in-memory rate limit
 
