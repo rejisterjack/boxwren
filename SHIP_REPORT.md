@@ -23,7 +23,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | LIMITS-02 | Kill, timeout, and fuel exhaustion classification | P0 | PASSED | 0 | 0 | 0 | Timeout 200ms on a huge fuel budget returned timed_out at 200ms. Fuel 50 returned fuel_exhausted. SIGINT returned killed. ship_core killing_one_run_leaves_its_sibling passed. |
 | REPORT-01 | Schema v1 JSON execution report | P0 | PASSED | 0 | 0 | 0 | Add-module JSON had schema_version 1 and the documented fields. ship_core report_json_is_schema_v1 passed. Empty stdout was an empty string. |
 | HOOKS-01 | Library Keywarden preflight hook | P1 | PASSED | 0 | 0 | 0 | grants.rs preflight_deny_returns_policy_before_the_guest passed. The library trait does not open a network connection. |
-| CLI-01 | boxwren run | P0 | NOT STARTED | | | | |
+| CLI-01 | boxwren run | P0 | PASSED | 0 | 0 | 0 | JSON report for the add module exited 0. Missing file exited 2. Bad memory unit exited 2. Guest denial and rejection printed a report and exited 1. SIGINT killed a loop. |
 | CLI-02 | boxwren demo | P0 | NOT STARTED | | | | |
 | CLI-03 | export-undoom | P1 | NOT STARTED | | | | |
 | CLI-04 | run-py and run-js | P1 | NOT STARTED | | | | |
@@ -798,7 +798,7 @@ None noticed while reading the code.
 - **ID:** CLI-01
 - **Name:** boxwren run
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -810,10 +810,10 @@ boxwren run MODULE executes a wasm or wat file. Flags: --report text|json, --fue
 
 **Acceptance criteria**
 
-- [ ] A valid module with --report json prints one JSON report.
-- [ ] A missing file exits 2 and does not pretend to run.
-- [ ] Ctrl-C on a loop yields status killed and exit 1.
-- [ ] Guest args after the module are not parsed as host grants.
+- [x] A valid module with --report json prints one JSON report.
+- [x] A missing file exits 2 and does not pretend to run.
+- [x] Ctrl-C on a loop yields status killed and exit 1.
+- [x] Guest args after the module are not parsed as host grants.
 
 **Test cases**
 
@@ -841,11 +841,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** JSON report for the add module exited 0. Missing file exited 2. Bad memory unit exited 2. Guest denial and rejection printed a report and exited 1. SIGINT killed a loop.
 
 ### CLI-02 boxwren demo
 
