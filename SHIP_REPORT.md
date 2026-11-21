@@ -14,7 +14,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | DATA-02 | SQLite schema auto-init | P0 | PASSED | 0 | 0 | 0 | Fresh sqlite created accounts, api_keys, runs. Restart kept the row. Bad paths fail. |
 | CORE-01 | Wasmtime engine execute | P0 | PASSED | 0 | 0 | 0 | lib add_returns_four passed. CLI add returned 4, exit 0. Empty, whitespace, and non-module rejected without a crash. Missing export rejected. 100 repeats stayed success. Two parallel CLI runs both returned 4. |
 | CORE-02 | KillHandle cross-thread kill | P0 | PASSED | 0 | 0 | 0 | Library kill_is_not_a_timeout passed. CLI SIGINT on a 5s loop returned status killed in 177ms and exit 1. A second process running the add module still returned 4. |
-| SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | NOT STARTED | | | | |
+| SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | PASSED | 0 | 0 | 0 | demo and secret.wasm denied /etc/passwd and named that path. grants.rs secret_read_is_blocked_and_named and path_open_is_denied_and_named passed. Python open of /etc/passwd did not print file contents. |
 | SANDBOX-02 | Directory preopen grants | P0 | NOT STARTED | | | | |
 | SANDBOX-03 | Network deny-by-default and allow-net | P0 | NOT STARTED | | | | |
 | SANDBOX-04 | Environment grants | P0 | NOT STARTED | | | | |
@@ -309,7 +309,7 @@ None noticed while reading the code.
 - **ID:** SANDBOX-01
 - **Name:** Filesystem deny-by-default and capability journal
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -323,9 +323,9 @@ With Grants::default there are no directory preopens. A guest path_open of a hos
 
 **Acceptance criteria**
 
-- [ ] A guest that opens /etc/passwd with no grants does not receive the file.
-- [ ] The report names the path on a direct path_open.
-- [ ] No filesystem event is allowed when the grants list is empty.
+- [x] A guest that opens /etc/passwd with no grants does not receive the file.
+- [x] The report names the path on a direct path_open.
+- [x] No filesystem event is allowed when the grants list is empty.
 
 **Test cases**
 
@@ -353,11 +353,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** demo and secret.wasm denied /etc/passwd and named that path. grants.rs secret_read_is_blocked_and_named and path_open_is_denied_and_named passed. Python open of /etc/passwd did not print file contents.
 
 ### SANDBOX-02 Directory preopen grants
 
