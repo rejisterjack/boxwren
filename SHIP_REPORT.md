@@ -53,7 +53,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-01 | Marketing home page | P1 | PASSED | 0 | 0 | 0 | Chrome loaded the home page with the product title and no console errors. Overflow was 0 at 360 and 1440. Light color-scheme emulation kept the dark background and light heading text. |
 | UI-02 | Hero sandbox demo | P1 | PASSED | 1 | 1 | 1 | The hero claimed a read of ~/.ssh/id_rsa and a fuel stop while the guest opens /etc/passwd and the loop stops on the wall clock. The copy now matches. Dev and production runs both showed filesystem /etc/passwd denied. |
 | UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | PASSED | 0 | 0 | 0 | All five home sections rendered. The Rust install tab showed cargo add boxwren. Overflow stayed 0. |
-| UI-04 | Operator dashboard | P0 | NOT STARTED | | | | |
+| UI-04 | Operator dashboard | P0 | PASSED | 0 | 0 | 0 | Chrome signup created a key, the default WAT returned 4 and appeared in history, the only key could not be revoked, sign-out cleared storage, and pasting the key restored the account. At 360px overflow was 0. No console errors. |
 | UI-05 | Navbar, footer, and SEO metadata | P1 | NOT STARTED | | | | |
 | UI-06 | Privacy and Terms pages | P2 | NOT STARTED | | | | |
 | UI-07 | Custom 404 page | P1 | NOT STARTED | | | | |
@@ -2442,7 +2442,7 @@ None noticed while reading the code.
 - **ID:** UI-04
 - **Name:** Operator dashboard
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2454,11 +2454,11 @@ None noticed while reading the code.
 
 **Acceptance criteria**
 
-- [ ] Signup stores the key and shows the tenant panel.
-- [ ] Pasting a valid key loads that account. A bad key shows the error text.
-- [ ] Execute runs the textarea and lists the new run.
-- [ ] Empty history says no runs have been recorded.
-- [ ] Reload keeps the session via localStorage.
+- [x] Signup stores the key and shows the tenant panel.
+- [x] Pasting a valid key loads that account. A bad key shows the error text.
+- [x] Execute runs the textarea and lists the new run.
+- [x] Empty history says no runs have been recorded.
+- [x] Reload keeps the session via localStorage.
 
 **Test cases**
 
@@ -2487,11 +2487,11 @@ Forms, tables, error panel, copy buttons, confirm dialog, empty history, disable
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Chrome signup created a key, the default WAT returned 4 and appeared in history, the only key could not be revoked, sign-out cleared storage, and pasting the key restored the account. At 360px overflow was 0. No console errors.
 
 ### UI-05 Navbar, footer, and SEO metadata
 
