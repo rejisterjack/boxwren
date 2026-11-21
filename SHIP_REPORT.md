@@ -48,7 +48,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SEC-03 | Hosted run clamps and guest argv isolation | P0 | PASSED | 0 | 0 | 0 | fuel 1e18 was clamped to 1e9 and the loop exhausted fuel in 290ms instead of the requested 60s wall. Entry -evil was 400. A string args value was 400. Args that look like grants stayed behind -- and the add module still returned 4. |
 | API-02 | KEYWARDEN_URL run preflight | P1 | PASSED | 0 | 0 | 0 | With the stub on :8899, entry run was allowed and entry deny-me returned 403 on both the server and Next. The guest did not start on deny. |
 | API-03 | Public POST /v1/demo | P1 | PASSED | 0 | 0 | 0 | secret, loop, network, and clean returned reports. loop run was timed_out. loop kill was killed. clean return_value was 4. An unknown scenario was 400. |
-| WEB-01 | DATABASE_URL required at Next boot | P0 | NOT STARTED | | | | |
+| WEB-01 | DATABASE_URL required at Next boot | P0 | PASSED | 0 | 0 | 0 | next dev with an empty DATABASE_URL printed DATABASE_URL is not set and exited. The normal server on :3010 booted with the env file set. |
 | WEB-02 | Production build and CLI binary fetch | P1 | NOT STARTED | | | | |
 | UI-01 | Marketing home page | P1 | NOT STARTED | | | | |
 | UI-02 | Hero sandbox demo | P1 | NOT STARTED | | | | |
@@ -2163,7 +2163,7 @@ None noticed while reading the code.
 - **ID:** WEB-01
 - **Name:** DATABASE_URL required at Next boot
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2177,9 +2177,9 @@ instrumentation.ts calls process.exit(1) when DATABASE_URL is missing, and logs 
 
 **Acceptance criteria**
 
-- [ ] next dev and next start refuse to stay up without DATABASE_URL.
-- [ ] The URL is not referenced from a NEXT_PUBLIC variable.
-- [ ] With the URL set, the process boots.
+- [x] next dev and next start refuse to stay up without DATABASE_URL.
+- [x] The URL is not referenced from a NEXT_PUBLIC variable.
+- [x] With the URL set, the process boots.
 
 **Test cases**
 
@@ -2207,11 +2207,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** next dev with an empty DATABASE_URL printed DATABASE_URL is not set and exited. The normal server on :3010 booted with the env file set.
 
 ### WEB-02 Production build and CLI binary fetch
 
