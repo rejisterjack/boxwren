@@ -30,7 +30,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | API-01 | Health check | P0 | PASSED | 0 | 0 | 0 | GET /healthz returned 200 ok on boxwren-server :8799 and Next :3010. POST returned 405 on both. Eight parallel GETs on the server all returned 200. No auth required. |
 | AUTH-01 | Email signup and initial API key | P0 | PASSED | 0 | 0 | 0 | Both hosts returned a bw_ key. Duplicate email was 409. Empty and at-less email were 400. Invalid JSON was 400. A non-English email was accepted. A value with whitespace was rejected. |
 | AUTH-02 | Bearer API key authentication | P0 | PASSED | 0 | 0 | 0 | Valid bearer returned the account on both hosts. Missing header, unknown key, Basic auth, and a SQL-looking token returned 401. |
-| AUTH-03 | Create and list API keys | P0 | NOT STARTED | | | | |
+| AUTH-03 | Create and list API keys | P0 | PASSED | 0 | 0 | 0 | List returned prefix and name, not the raw key. Empty and 81-character names were 400. A name containing a script tag was stored and the new key authenticated. |
 | AUTH-04 | Dashboard sign-out | P1 | NOT STARTED | | | | |
 | AUTH-05 | Delete account | P0 | NOT STARTED | | | | |
 | AUTH-06 | Revoke API key | P0 | NOT STARTED | | | | |
@@ -1182,7 +1182,7 @@ None noticed while reading the code.
 - **ID:** AUTH-03
 - **Name:** Create and list API keys
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1195,10 +1195,10 @@ GET /v1/keys lists id, name, prefix, and created_at for the caller. The hash and
 
 **Acceptance criteria**
 
-- [ ] List returns only the caller's keys.
-- [ ] Create returns a raw key that then authenticates.
-- [ ] Empty and 81-character names return 400.
-- [ ] The list never includes the raw key or the hash.
+- [x] List returns only the caller's keys.
+- [x] Create returns a raw key that then authenticates.
+- [x] Empty and 81-character names return 400.
+- [x] The list never includes the raw key or the hash.
 
 **Test cases**
 
@@ -1226,11 +1226,11 @@ Dashboard issuance is UI-04.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** List returned prefix and name, not the raw key. Empty and 81-character names were 400. A name containing a script tag was stored and the new key authenticated.
 
 ### AUTH-04 Dashboard sign-out
 
