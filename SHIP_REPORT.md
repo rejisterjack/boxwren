@@ -68,7 +68,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | TEST-02 | Web unit tests | P1 | PASSED | 0 | 0 | 0 | node --test on lib/*.test.ts passed 5 tests. tsc --noEmit in web exited 0. |
 | FUZZ-01 | fuzz_smoke guest modules | P2 | PASSED | 0 | 0 | 0 | release fuzz_smoke random_modules_do_not_panic passed. longer_random_modules stayed ignored. |
 | META-01 | Favicon, manifest, Open Graph, and theme color | P2 | PASSED | 0 | 0 | 0 | favicon.svg, favicon.png, apple-icon.png, both icons, and manifest.json returned 200. og:title and theme-color were in the home document. |
-| GAP-01 | Document or automate Neon schema apply | P0 | NOT STARTED | | | | |
+| GAP-01 | Document or automate Neon schema apply | P0 | PASSED | 0 | 0 | 0 | HOSTED.md now says to apply web/db/schema.sql with psql and that the statements are idempotent. boxwren-server still creates its own SQLite schema. |
 | GAP-02 | Global 500 error page | P1 | NOT STARTED | | | | |
 | GAP-03 | OpenAPI matches live routes | P1 | NOT STARTED | | | | |
 
@@ -3259,7 +3259,7 @@ None noticed while reading the code.
 - **ID:** GAP-01
 - **Name:** Document or automate Neon schema apply
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -3273,9 +3273,9 @@ This is missing. schema.sql is the only definition of the Neon tables. No script
 
 **Acceptance criteria**
 
-- [ ] A new database can be brought to the schema in one documented step.
-- [ ] Running that step twice does not drop accounts or runs.
-- [ ] HOSTED.md or the README states that step.
+- [x] A new database can be brought to the schema in one documented step.
+- [x] Running that step twice does not drop accounts or runs.
+- [x] HOSTED.md or the README states that step.
 
 **Test cases**
 
@@ -3303,11 +3303,11 @@ No UI unless the docs page is the site. The docs file is markdown.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** docs/HOSTED.md
+- **Notes:** HOSTED.md now says to apply web/db/schema.sql with psql and that the statements are idempotent. boxwren-server still creates its own SQLite schema.
 
 ### GAP-02 Global 500 error page
 
