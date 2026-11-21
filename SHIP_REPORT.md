@@ -45,7 +45,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CORS-01 | boxwren-server CORS allowlist | P1 | NOT STARTED | | | | |
 | SEC-01 | boxwren-server security headers | P1 | PASSED | 0 | 0 | 0 | Health, 401, and 400 responses included nosniff, DENY, and no-referrer. |
 | SEC-02 | Hosted Next.js security headers | P1 | PASSED | 0 | 0 | 0 | Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent. |
-| SEC-03 | Hosted run clamps and guest argv isolation | P0 | NOT STARTED | | | | |
+| SEC-03 | Hosted run clamps and guest argv isolation | P0 | PASSED | 0 | 0 | 0 | fuel 1e18 was clamped to 1e9 and the loop exhausted fuel in 290ms instead of the requested 60s wall. Entry -evil was 400. A string args value was 400. Args that look like grants stayed behind -- and the add module still returned 4. |
 | API-02 | KEYWARDEN_URL run preflight | P1 | NOT STARTED | | | | |
 | API-03 | Public POST /v1/demo | P1 | NOT STARTED | | | | |
 | WEB-01 | DATABASE_URL required at Next boot | P0 | NOT STARTED | | | | |
@@ -1995,7 +1995,7 @@ None noticed while reading the code.
 - **ID:** SEC-03
 - **Name:** Hosted run clamps and guest argv isolation
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2009,10 +2009,10 @@ Hosted runs clamp fuel, memory, and wall time to the library defaults (1e9, 32 M
 
 **Acceptance criteria**
 
-- [ ] fuel above the max is clamped.
-- [ ] An arg of --allow-env SECRET stays after --.
-- [ ] Entry '-run' is 400.
-- [ ] dirs, net, and env are not read by the hosted command builder.
+- [x] fuel above the max is clamped.
+- [x] An arg of --allow-env SECRET stays after --.
+- [x] Entry '-run' is 400.
+- [x] dirs, net, and env are not read by the hosted command builder.
 
 **Test cases**
 
@@ -2040,11 +2040,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** fuel 1e18 was clamped to 1e9 and the loop exhausted fuel in 290ms instead of the requested 60s wall. Entry -evil was 400. A string args value was 400. Args that look like grants stayed behind -- and the add module still returned 4.
 
 ### API-02 KEYWARDEN_URL run preflight
 
