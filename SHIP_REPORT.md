@@ -54,7 +54,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-02 | Hero sandbox demo | P1 | PASSED | 1 | 1 | 1 | The hero claimed a read of ~/.ssh/id_rsa and a fuel stop while the guest opens /etc/passwd and the loop stops on the wall clock. The copy now matches. Dev and production runs both showed filesystem /etc/passwd denied. |
 | UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | PASSED | 0 | 0 | 0 | All five home sections rendered. The Rust install tab showed cargo add boxwren. Overflow stayed 0. |
 | UI-04 | Operator dashboard | P0 | PASSED | 0 | 0 | 0 | Chrome signup created a key, the default WAT returned 4 and appeared in history, the only key could not be revoked, sign-out cleared storage, and pasting the key restored the account. At 360px overflow was 0. No console errors. |
-| UI-05 | Navbar, footer, and SEO metadata | P1 | NOT STARTED | | | | |
+| UI-05 | Navbar, footer, and SEO metadata | P1 | PASSED | 0 | 0 | 0 | Desktop nav and footer links rendered. At 360px the menu opened and Escape closed it. The document title, og:title, and theme-color were present. |
 | UI-06 | Privacy and Terms pages | P2 | NOT STARTED | | | | |
 | UI-07 | Custom 404 page | P1 | NOT STARTED | | | | |
 | BIND-01 | Python bindings | P1 | NOT STARTED | | | | |
@@ -2498,7 +2498,7 @@ Forms, tables, error panel, copy buttons, confirm dialog, empty history, disable
 - **ID:** UI-05
 - **Name:** Navbar, footer, and SEO metadata
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2512,10 +2512,10 @@ The navbar links to the home sections and to /dashboard. On small screens a menu
 
 **Acceptance criteria**
 
-- [ ] Every nav link reaches its target.
-- [ ] The mobile menu opens, closes on Escape, and closes when a link is chosen.
-- [ ] The document title matches layout.tsx.
-- [ ] Footer links are present on home, dashboard, privacy, and terms.
+- [x] Every nav link reaches its target.
+- [x] The mobile menu opens, closes on Escape, and closes when a link is chosen.
+- [x] The document title matches layout.tsx.
+- [x] Footer links are present on home, dashboard, privacy, and terms.
 
 **Test cases**
 
@@ -2543,11 +2543,11 @@ None.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Desktop nav and footer links rendered. At 360px the menu opened and Escape closed it. The document title, og:title, and theme-color were present.
 
 ### UI-06 Privacy and Terms pages
 
