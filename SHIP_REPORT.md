@@ -13,7 +13,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | DATA-01 | Neon Postgres schema | P0 | PASSED | 0 | 0 | 0 | Live Neon: four tables, FKs, unique email and hash, runs index. Duplicate email 23505. SQL-like text stored as data. |
 | DATA-02 | SQLite schema auto-init | P0 | PASSED | 0 | 0 | 0 | Fresh sqlite created accounts, api_keys, runs. Restart kept the row. Bad paths fail. |
 | CORE-01 | Wasmtime engine execute | P0 | PASSED | 0 | 0 | 0 | lib add_returns_four passed. CLI add returned 4, exit 0. Empty, whitespace, and non-module rejected without a crash. Missing export rejected. 100 repeats stayed success. Two parallel CLI runs both returned 4. |
-| CORE-02 | KillHandle cross-thread kill | P0 | NOT STARTED | | | | |
+| CORE-02 | KillHandle cross-thread kill | P0 | PASSED | 0 | 0 | 0 | Library kill_is_not_a_timeout passed. CLI SIGINT on a 5s loop returned status killed in 177ms and exit 1. A second process running the add module still returned 4. |
 | SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | NOT STARTED | | | | |
 | SANDBOX-02 | Directory preopen grants | P0 | NOT STARTED | | | | |
 | SANDBOX-03 | Network deny-by-default and allow-net | P0 | NOT STARTED | | | | |
@@ -255,7 +255,7 @@ None noticed while reading the code.
 - **ID:** CORE-02
 - **Name:** KillHandle cross-thread kill
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -268,9 +268,9 @@ KillHandle::kill, called from another thread, stops that run. The report status 
 
 **Acceptance criteria**
 
-- [ ] A looping guest stopped by KillHandle reports status kind killed.
-- [ ] The run ends well before the wall-clock deadline.
-- [ ] Killing a handle that is not running does not panic.
+- [x] A looping guest stopped by KillHandle reports status kind killed.
+- [x] The run ends well before the wall-clock deadline.
+- [x] Killing a handle that is not running does not panic.
 
 **Test cases**
 
@@ -298,11 +298,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Library kill_is_not_a_timeout passed. CLI SIGINT on a 5s loop returned status killed in 177ms and exit 1. A second process running the add module still returned 4.
 
 ### SANDBOX-01 Filesystem deny-by-default and capability journal
 
