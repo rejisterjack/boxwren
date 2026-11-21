@@ -29,7 +29,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CLI-04 | run-py and run-js | P1 | PASSED | 0 | 0 | 0 | Release binary has both commands. run-py printed hello-from-py. run-js printed js-ok. Ungranted /etc/passwd did not leak. Empty Python file succeeded with empty stdout. |
 | API-01 | Health check | P0 | PASSED | 0 | 0 | 0 | GET /healthz returned 200 ok on boxwren-server :8799 and Next :3010. POST returned 405 on both. Eight parallel GETs on the server all returned 200. No auth required. |
 | AUTH-01 | Email signup and initial API key | P0 | PASSED | 0 | 0 | 0 | Both hosts returned a bw_ key. Duplicate email was 409. Empty and at-less email were 400. Invalid JSON was 400. A non-English email was accepted. A value with whitespace was rejected. |
-| AUTH-02 | Bearer API key authentication | P0 | NOT STARTED | | | | |
+| AUTH-02 | Bearer API key authentication | P0 | PASSED | 0 | 0 | 0 | Valid bearer returned the account on both hosts. Missing header, unknown key, Basic auth, and a SQL-looking token returned 401. |
 | AUTH-03 | Create and list API keys | P0 | NOT STARTED | | | | |
 | AUTH-04 | Dashboard sign-out | P1 | NOT STARTED | | | | |
 | AUTH-05 | Delete account | P0 | NOT STARTED | | | | |
@@ -1127,7 +1127,7 @@ API. Dashboard form is UI-04.
 - **ID:** AUTH-02
 - **Name:** Bearer API key authentication
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1141,9 +1141,9 @@ Protected routes require Authorization: Bearer <key>. The lookup is sha256 of th
 
 **Acceptance criteria**
 
-- [ ] A current key returns the owning account.
-- [ ] Missing, empty, and wrong keys return 401.
-- [ ] A key from account A never resolves to account B.
+- [x] A current key returns the owning account.
+- [x] Missing, empty, and wrong keys return 401.
+- [x] A key from account A never resolves to account B.
 
 **Test cases**
 
@@ -1171,11 +1171,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Valid bearer returned the account on both hosts. Missing header, unknown key, Basic auth, and a SQL-looking token returned 401.
 
 ### AUTH-03 Create and list API keys
 
