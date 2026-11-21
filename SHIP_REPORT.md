@@ -31,7 +31,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | AUTH-01 | Email signup and initial API key | P0 | PASSED | 0 | 0 | 0 | Both hosts returned a bw_ key. Duplicate email was 409. Empty and at-less email were 400. Invalid JSON was 400. A non-English email was accepted. A value with whitespace was rejected. |
 | AUTH-02 | Bearer API key authentication | P0 | PASSED | 0 | 0 | 0 | Valid bearer returned the account on both hosts. Missing header, unknown key, Basic auth, and a SQL-looking token returned 401. |
 | AUTH-03 | Create and list API keys | P0 | PASSED | 0 | 0 | 0 | List returned prefix and name, not the raw key. Empty and 81-character names were 400. A name containing a script tag was stored and the new key authenticated. |
-| AUTH-04 | Dashboard sign-out | P1 | NOT STARTED | | | | |
+| AUTH-04 | Dashboard sign-out | P1 | PASSED | 0 | 0 | 0 | Chrome: signup stored boxwren_api_key, Sign Out cleared it and showed the signup form, reload stayed signed out, and pasting the same key loaded the account again. |
 | AUTH-05 | Delete account | P0 | PASSED | 0 | 0 | 0 | DELETE /v1/me returned 204 on both hosts. The old key then returned 401. The same email could sign up again. |
 | AUTH-06 | Revoke API key | P0 | PASSED | 1 | 1 | 0 | Confirmed the API revoked the last key and the bearer then returned 401. Both hosts now return 400 cannot revoke the last API key and the original key still works. A second key can still be revoked. Server regression last_api_key_cannot_be_revoked passed. The same server change also allows CORS DELETE and hashes the full Authorization header for the rate-limit bucket. |
 | RUN-01 | Create and list runs | P0 | PASSED | 0 | 0 | 0 | WAT add module returned success and return_value 4 on both hosts. The run appeared in that account's list. Empty module and missing module were 400. Unauthenticated POST was 401. |
@@ -1237,7 +1237,7 @@ Dashboard issuance is UI-04.
 - **ID:** AUTH-04
 - **Name:** Dashboard sign-out
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1249,10 +1249,10 @@ Sign out removes boxwren_api_key from localStorage and clears token, account, ke
 
 **Acceptance criteria**
 
-- [ ] After sign-out, the signup form is shown.
-- [ ] localStorage no longer has the key.
-- [ ] Reload stays signed out.
-- [ ] The account still exists on the server and the old key still works if pasted again.
+- [x] After sign-out, the signup form is shown.
+- [x] localStorage no longer has the key.
+- [x] Reload stays signed out.
+- [x] The account still exists on the server and the old key still works if pasted again.
 
 **Test cases**
 
@@ -1280,11 +1280,11 @@ Button sits with Issue key and Delete account. Check wrap at 360px, focus ring, 
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Chrome: signup stored boxwren_api_key, Sign Out cleared it and showed the signup form, reload stayed signed out, and pasting the same key loaded the account again.
 
 ### AUTH-05 Delete account
 
