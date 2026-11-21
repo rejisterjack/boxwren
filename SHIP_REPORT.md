@@ -38,7 +38,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RUN-02 | Get run by id | P0 | PASSED | 0 | 0 | 0 | Owner GET returned the report and return_value 4. Unknown ids returned 404 on both hosts. |
 | RUN-03 | Live kill on boxwren-server | P0 | PASSED | 0 | 0 | 0 | wait false returned running. POST kill returned 202 and the stored report status was killed. A finished run returned 404 run not in flight. |
 | RUN-04 | Cross-account run isolation | P0 | PASSED | 0 | 0 | 0 | Account B's list was empty. B's GET was 404. B's kill of A's in-flight server run was 404, and the owner could still kill it. |
-| RUN-05 | Hosted async run and kill refusal | P0 | NOT STARTED | | | | |
+| RUN-05 | Hosted async run and kill refusal | P0 | PASSED | 0 | 0 | 0 | Hosted wait false returned 400. Hosted kill returned 409 for a real id and for a missing id. A dirs grant of / did not allow /etc/passwd; the event was denied. |
 | RATE-01 | boxwren-server rate limit | P0 | NOT STARTED | | | | |
 | RATE-02 | Hosted Neon rate limit | P0 | NOT STARTED | | | | |
 | RATE-03 | Public demo in-memory rate limit | P1 | NOT STARTED | | | | |
@@ -1623,7 +1623,7 @@ None noticed while reading the code.
 - **ID:** RUN-05
 - **Name:** Hosted async run and kill refusal
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1636,9 +1636,9 @@ On the Next.js API, wait false returns 400 live kill requires the local boxwren-
 
 **Acceptance criteria**
 
-- [ ] wait false never starts a guest on the hosted API.
-- [ ] Kill returns 409 for an authenticated caller.
-- [ ] dirs, net, and env fields do not open host resources.
+- [x] wait false never starts a guest on the hosted API.
+- [x] Kill returns 409 for an authenticated caller.
+- [x] dirs, net, and env fields do not open host resources.
 
 **Test cases**
 
@@ -1666,11 +1666,11 @@ No kill button on the dashboard.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Hosted wait false returned 400. Hosted kill returned 409 for a real id and for a missing id. A dirs grant of / did not allow /etc/passwd; the event was denied.
 
 ### RATE-01 boxwren-server rate limit
 
