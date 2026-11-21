@@ -42,7 +42,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RATE-01 | boxwren-server rate limit | P0 | NOT STARTED | | | | |
 | RATE-02 | Hosted Neon rate limit | P0 | PASSED | 0 | 0 | 0 | 70 parallel GETs for one key returned 60 times 200 and 10 times 429. Counters are in Neon rate_limits. |
 | RATE-03 | Public demo in-memory rate limit | P1 | NOT STARTED | | | | |
-| CORS-01 | boxwren-server CORS allowlist | P1 | NOT STARTED | | | | |
+| CORS-01 | boxwren-server CORS allowlist | P1 | PASSED | 1 | 1 | 0 | OPTIONS DELETE from http://localhost:3000 returned 200 and allow-methods GET, POST, DELETE, OPTIONS. An evil origin was not reflected. http://127.0.0.1:3000 was reflected. DELETE was missing from the allowlist before this pass and is included now. |
 | SEC-01 | boxwren-server security headers | P1 | PASSED | 0 | 0 | 0 | Health, 401, and 400 responses included nosniff, DENY, and no-referrer. |
 | SEC-02 | Hosted Next.js security headers | P1 | PASSED | 0 | 0 | 0 | Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent. |
 | SEC-03 | Hosted run clamps and guest argv isolation | P0 | PASSED | 0 | 0 | 0 | fuel 1e18 was clamped to 1e9 and the loop exhausted fuel in 290ms instead of the requested 60s wall. Entry -evil was 400. A string args value was 400. Args that look like grants stayed behind -- and the add module still returned 4. |
@@ -1837,7 +1837,7 @@ The hero must show a failure state when the demo returns 429. That display is UI
 - **ID:** CORS-01
 - **Name:** boxwren-server CORS allowlist
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1850,9 +1850,9 @@ Default origins are http://127.0.0.1:3000, http://localhost:3000, and https://bo
 
 **Acceptance criteria**
 
-- [ ] An allowlisted Origin is reflected on a /v1 response.
-- [ ] A random Origin is not.
-- [ ] OPTIONS preflight succeeds for GET and POST from an allowlisted origin.
+- [x] An allowlisted Origin is reflected on a /v1 response.
+- [x] A random Origin is not.
+- [x] OPTIONS preflight succeeds for GET and POST from an allowlisted origin.
 
 **Test cases**
 
@@ -1880,11 +1880,11 @@ When the dashboard is cross-origin, failed preflight shows as a network error. C
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 1
+- **Bugs Fixed:** 1
+- **UI Issues Fixed:** 0
+- **Files Changed:** crates/boxwren-server/src/main.rs
+- **Notes:** OPTIONS DELETE from http://localhost:3000 returned 200 and allow-methods GET, POST, DELETE, OPTIONS. An evil origin was not reflected. http://127.0.0.1:3000 was reflected. DELETE was missing from the allowlist before this pass and is included now.
 
 ### SEC-01 boxwren-server security headers
 
