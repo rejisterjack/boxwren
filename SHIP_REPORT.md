@@ -65,7 +65,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
 | DEVOPS-04 | Fly.io config | P2 | PASSED | 0 | 0 | 0 | fly.toml points at the server Dockerfile, listens on 8080, and checks /healthz. No deploy was run. |
 | TEST-01 | Rust test suite | P1 | PASSED | 0 | 0 | 0 | boxwren lib, grants, ship_core, and boxwren-server tests passed in this pass, including the last-key and rate-limit regressions. |
-| TEST-02 | Web unit tests | P1 | NOT STARTED | | | | |
+| TEST-02 | Web unit tests | P1 | PASSED | 0 | 0 | 0 | node --test on lib/*.test.ts passed 5 tests. tsc --noEmit in web exited 0. |
 | FUZZ-01 | fuzz_smoke guest modules | P2 | NOT STARTED | | | | |
 | META-01 | Favicon, manifest, Open Graph, and theme color | P2 | NOT STARTED | | | | |
 | GAP-01 | Document or automate Neon schema apply | P0 | NOT STARTED | | | | |
@@ -3095,7 +3095,7 @@ None noticed while reading the code.
 - **ID:** TEST-02
 - **Name:** Web unit tests
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -3110,9 +3110,9 @@ npm test runs node:test on web/lib/*.test.ts. The script uses --experimental-str
 
 **Acceptance criteria**
 
-- [ ] npm test passes without a database.
-- [ ] email.test.ts covers the validEmail rules.
-- [ ] run tests cover the argv isolation described in SEC-03.
+- [x] npm test passes without a database.
+- [x] email.test.ts covers the validEmail rules.
+- [x] run tests cover the argv isolation described in SEC-03.
 
 **Test cases**
 
@@ -3140,11 +3140,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** node --test on lib/*.test.ts passed 5 tests. tsc --noEmit in web exited 0.
 
 ### FUZZ-01 fuzz_smoke guest modules
 
