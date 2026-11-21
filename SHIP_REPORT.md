@@ -44,7 +44,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RATE-03 | Public demo in-memory rate limit | P1 | NOT STARTED | | | | |
 | CORS-01 | boxwren-server CORS allowlist | P1 | NOT STARTED | | | | |
 | SEC-01 | boxwren-server security headers | P1 | PASSED | 0 | 0 | 0 | Health, 401, and 400 responses included nosniff, DENY, and no-referrer. |
-| SEC-02 | Hosted Next.js security headers | P1 | NOT STARTED | | | | |
+| SEC-02 | Hosted Next.js security headers | P1 | PASSED | 0 | 0 | 0 | Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent. |
 | SEC-03 | Hosted run clamps and guest argv isolation | P0 | NOT STARTED | | | | |
 | API-02 | KEYWARDEN_URL run preflight | P1 | NOT STARTED | | | | |
 | API-03 | Public POST /v1/demo | P1 | NOT STARTED | | | | |
@@ -1943,7 +1943,7 @@ None noticed while reading the code.
 - **ID:** SEC-02
 - **Name:** Hosted Next.js security headers
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1955,8 +1955,8 @@ next.config.mjs sets X-Content-Type-Options nosniff, X-Frame-Options DENY, Refer
 
 **Acceptance criteria**
 
-- [ ] Document responses include those four headers.
-- [ ] X-Powered-By is absent.
+- [x] Document responses include those four headers.
+- [x] X-Powered-By is absent.
 
 **Test cases**
 
@@ -1984,11 +1984,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent.
 
 ### SEC-03 Hosted run clamps and guest argv isolation
 
