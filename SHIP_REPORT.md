@@ -35,7 +35,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | AUTH-05 | Delete account | P0 | PASSED | 0 | 0 | 0 | DELETE /v1/me returned 204 on both hosts. The old key then returned 401. The same email could sign up again. |
 | AUTH-06 | Revoke API key | P0 | NOT STARTED | | | | |
 | RUN-01 | Create and list runs | P0 | PASSED | 0 | 0 | 0 | WAT add module returned success and return_value 4 on both hosts. The run appeared in that account's list. Empty module and missing module were 400. Unauthenticated POST was 401. |
-| RUN-02 | Get run by id | P0 | NOT STARTED | | | | |
+| RUN-02 | Get run by id | P0 | PASSED | 0 | 0 | 0 | Owner GET returned the report and return_value 4. Unknown ids returned 404 on both hosts. |
 | RUN-03 | Live kill on boxwren-server | P0 | NOT STARTED | | | | |
 | RUN-04 | Cross-account run isolation | P0 | NOT STARTED | | | | |
 | RUN-05 | Hosted async run and kill refusal | P0 | NOT STARTED | | | | |
@@ -1461,7 +1461,7 @@ None noticed while reading the code.
 - **ID:** RUN-02
 - **Name:** Get run by id
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1474,9 +1474,9 @@ GET /v1/runs/{id} returns id, status, and report for a run owned by the caller. 
 
 **Acceptance criteria**
 
-- [ ] The owner receives the stored report JSON.
-- [ ] Another account receives 404.
-- [ ] The response does not include another account's report.
+- [x] The owner receives the stored report JSON.
+- [x] Another account receives 404.
+- [x] The response does not include another account's report.
 
 **Test cases**
 
@@ -1504,11 +1504,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Owner GET returned the report and return_value 4. Unknown ids returned 404 on both hosts.
 
 ### RUN-03 Live kill on boxwren-server
 
