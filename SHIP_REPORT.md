@@ -36,7 +36,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | AUTH-06 | Revoke API key | P0 | NOT STARTED | | | | |
 | RUN-01 | Create and list runs | P0 | PASSED | 0 | 0 | 0 | WAT add module returned success and return_value 4 on both hosts. The run appeared in that account's list. Empty module and missing module were 400. Unauthenticated POST was 401. |
 | RUN-02 | Get run by id | P0 | PASSED | 0 | 0 | 0 | Owner GET returned the report and return_value 4. Unknown ids returned 404 on both hosts. |
-| RUN-03 | Live kill on boxwren-server | P0 | NOT STARTED | | | | |
+| RUN-03 | Live kill on boxwren-server | P0 | PASSED | 0 | 0 | 0 | wait false returned running. POST kill returned 202 and the stored report status was killed. A finished run returned 404 run not in flight. |
 | RUN-04 | Cross-account run isolation | P0 | NOT STARTED | | | | |
 | RUN-05 | Hosted async run and kill refusal | P0 | NOT STARTED | | | | |
 | RATE-01 | boxwren-server rate limit | P0 | NOT STARTED | | | | |
@@ -1515,7 +1515,7 @@ None noticed while reading the code.
 - **ID:** RUN-03
 - **Name:** Live kill on boxwren-server
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1527,9 +1527,9 @@ POST /v1/runs with wait false inserts a running row, returns the id immediately,
 
 **Acceptance criteria**
 
-- [ ] A looping guest started with wait false can be killed and ends as killed.
-- [ ] Killing another account's run id returns 404 and does not stop it.
-- [ ] Killing an already finished run returns 404 run not in flight.
+- [x] A looping guest started with wait false can be killed and ends as killed.
+- [x] Killing another account's run id returns 404 and does not stop it.
+- [x] Killing an already finished run returns 404 run not in flight.
 
 **Test cases**
 
@@ -1557,11 +1557,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** wait false returned running. POST kill returned 202 and the stored report status was killed. A finished run returned 404 run not in flight.
 
 ### RUN-04 Cross-account run isolation
 
