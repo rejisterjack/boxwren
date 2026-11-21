@@ -19,7 +19,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SANDBOX-03 | Network deny-by-default and allow-net | P0 | PASSED | 0 | 0 | 0 | net.wasm and demo denied 127.0.0.1:1. grants.rs network_is_denied_unless_allowlisted, hostname_lookup_stays_off_for_an_ip_grant, and hostname_grant_can_connect passed. |
 | SANDBOX-04 | Environment grants | P0 | PASSED | 0 | 0 | 0 | Missing host variable failed before start. grants.rs env_parse and environment_is_not_inherited_unless_granted passed. Python os.getenv of an explicit NAME=VALUE grant printed hello-env. |
 | SANDBOX-05 | Root and home directory warnings | P1 | PASSED | 0 | 0 | 0 | CLI --allow-dir /:/:ro succeeded and warned that the grant is the filesystem root. grants.rs root_and_home_grants_are_warned_and_not_rewritten passed. |
-| LIMITS-01 | Fuel, memory, wall clock, stdio, and module size caps | P0 | NOT STARTED | | | | |
+| LIMITS-01 | Fuel, memory, wall clock, stdio, and module size caps | P0 | PASSED | 0 | 0 | 0 | fuel 50 returned fuel_exhausted with fuel_used 50. memory.wasm returned memory_limited. Bad --memory 5zz exited 2. Lib tests covered module size, stdio truncation, and five memories. |
 | LIMITS-02 | Kill, timeout, and fuel exhaustion classification | P0 | NOT STARTED | | | | |
 | REPORT-01 | Schema v1 JSON execution report | P0 | NOT STARTED | | | | |
 | HOOKS-01 | Library Keywarden preflight hook | P1 | NOT STARTED | | | | |
@@ -581,7 +581,7 @@ None noticed while reading the code.
 - **ID:** LIMITS-01
 - **Name:** Fuel, memory, wall clock, stdio, and module size caps
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -595,10 +595,10 @@ Defaults are 1_000_000_000 fuel, 32 MiB memory, 2 seconds wall time, 1 MiB stdou
 
 **Acceptance criteria**
 
-- [ ] Defaults match limits.rs constants.
-- [ ] A module larger than max_module_bytes is rejected and not compiled.
-- [ ] A memory grow past memory_bytes is memory_limited.
-- [ ] Stdout over max_stdio_bytes is truncated and stdout_truncated is true.
+- [x] Defaults match limits.rs constants.
+- [x] A module larger than max_module_bytes is rejected and not compiled.
+- [x] A memory grow past memory_bytes is memory_limited.
+- [x] Stdout over max_stdio_bytes is truncated and stdout_truncated is true.
 
 **Test cases**
 
@@ -626,11 +626,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** fuel 50 returned fuel_exhausted with fuel_used 50. memory.wasm returned memory_limited. Bad --memory 5zz exited 2. Lib tests covered module size, stdio truncation, and five memories.
 
 ### LIMITS-02 Kill, timeout, and fuel exhaustion classification
 
