@@ -37,7 +37,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | RUN-01 | Create and list runs | P0 | PASSED | 0 | 0 | 0 | WAT add module returned success and return_value 4 on both hosts. The run appeared in that account's list. Empty module and missing module were 400. Unauthenticated POST was 401. |
 | RUN-02 | Get run by id | P0 | PASSED | 0 | 0 | 0 | Owner GET returned the report and return_value 4. Unknown ids returned 404 on both hosts. |
 | RUN-03 | Live kill on boxwren-server | P0 | PASSED | 0 | 0 | 0 | wait false returned running. POST kill returned 202 and the stored report status was killed. A finished run returned 404 run not in flight. |
-| RUN-04 | Cross-account run isolation | P0 | NOT STARTED | | | | |
+| RUN-04 | Cross-account run isolation | P0 | PASSED | 0 | 0 | 0 | Account B's list was empty. B's GET was 404. B's kill of A's in-flight server run was 404, and the owner could still kill it. |
 | RUN-05 | Hosted async run and kill refusal | P0 | NOT STARTED | | | | |
 | RATE-01 | boxwren-server rate limit | P0 | NOT STARTED | | | | |
 | RATE-02 | Hosted Neon rate limit | P0 | NOT STARTED | | | | |
@@ -1568,7 +1568,7 @@ None noticed while reading the code.
 - **ID:** RUN-04
 - **Name:** Cross-account run isolation
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1582,9 +1582,9 @@ Every run read and the server kill path filters by the authenticated account id.
 
 **Acceptance criteria**
 
-- [ ] Account B's list does not contain account A's run.
-- [ ] Account B's GET of A's id is 404.
-- [ ] Account B's kill of A's in-flight server run is 404 and A's guest keeps running.
+- [x] Account B's list does not contain account A's run.
+- [x] Account B's GET of A's id is 404.
+- [x] Account B's kill of A's in-flight server run is 404 and A's guest keeps running.
 
 **Test cases**
 
@@ -1612,11 +1612,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Account B's list was empty. B's GET was 404. B's kill of A's in-flight server run was 404, and the owner could still kill it.
 
 ### RUN-05 Hosted async run and kill refusal
 
