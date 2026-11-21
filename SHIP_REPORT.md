@@ -27,7 +27,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CLI-02 | boxwren demo | P0 | PASSED | 0 | 0 | 0 | boxwren demo --report json exited 0. Secret, network, and memory probes were all blocked. |
 | CLI-03 | export-undoom | P1 | PASSED | 0 | 0 | 0 | A success report wrapped to agent boxwren, name boxwren-run, with the original report under metadata.report_json. Empty input exited 2. |
 | CLI-04 | run-py and run-js | P1 | PASSED | 0 | 0 | 0 | Release binary has both commands. run-py printed hello-from-py. run-js printed js-ok. Ungranted /etc/passwd did not leak. Empty Python file succeeded with empty stdout. |
-| API-01 | Health check | P0 | NOT STARTED | | | | |
+| API-01 | Health check | P0 | PASSED | 0 | 0 | 0 | GET /healthz returned 200 ok on boxwren-server :8799 and Next :3010. POST returned 405 on both. Eight parallel GETs on the server all returned 200. No auth required. |
 | AUTH-01 | Email signup and initial API key | P0 | NOT STARTED | | | | |
 | AUTH-02 | Bearer API key authentication | P0 | NOT STARTED | | | | |
 | AUTH-03 | Create and list API keys | P0 | NOT STARTED | | | | |
@@ -1015,7 +1015,7 @@ None noticed while reading the code.
 - **ID:** API-01
 - **Name:** Health check
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1028,9 +1028,9 @@ GET /healthz on the Next.js app and on boxwren-server returns text/plain ok with
 
 **Acceptance criteria**
 
-- [ ] Both processes return 200 and a body of ok.
-- [ ] No Authorization header is required.
-- [ ] The Next health check does not run a wasm module.
+- [x] Both processes return 200 and a body of ok.
+- [x] No Authorization header is required.
+- [x] The Next health check does not run a wasm module.
 
 **Test cases**
 
@@ -1058,11 +1058,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** GET /healthz returned 200 ok on boxwren-server :8799 and Next :3010. POST returned 405 on both. Eight parallel GETs on the server all returned 200. No auth required.
 
 ### AUTH-01 Email signup and initial API key
 
