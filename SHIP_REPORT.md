@@ -66,7 +66,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | DEVOPS-04 | Fly.io config | P2 | PASSED | 0 | 0 | 0 | fly.toml points at the server Dockerfile, listens on 8080, and checks /healthz. No deploy was run. |
 | TEST-01 | Rust test suite | P1 | PASSED | 0 | 0 | 0 | boxwren lib, grants, ship_core, and boxwren-server tests passed in this pass, including the last-key and rate-limit regressions. |
 | TEST-02 | Web unit tests | P1 | PASSED | 0 | 0 | 0 | node --test on lib/*.test.ts passed 5 tests. tsc --noEmit in web exited 0. |
-| FUZZ-01 | fuzz_smoke guest modules | P2 | NOT STARTED | | | | |
+| FUZZ-01 | fuzz_smoke guest modules | P2 | PASSED | 0 | 0 | 0 | release fuzz_smoke random_modules_do_not_panic passed. longer_random_modules stayed ignored. |
 | META-01 | Favicon, manifest, Open Graph, and theme color | P2 | NOT STARTED | | | | |
 | GAP-01 | Document or automate Neon schema apply | P0 | NOT STARTED | | | | |
 | GAP-02 | Global 500 error page | P1 | NOT STARTED | | | | |
@@ -3151,7 +3151,7 @@ None noticed while reading the code.
 - **ID:** FUZZ-01
 - **Name:** fuzz_smoke guest modules
 - **Priority:** P2
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -3163,8 +3163,8 @@ CI runs cargo test -p boxwren --test fuzz_smoke --release. It is a short smoke f
 
 **Acceptance criteria**
 
-- [ ] The release test command exits 0.
-- [ ] A crash or panic fails the test.
+- [x] The release test command exits 0.
+- [x] A crash or panic fails the test.
 
 **Test cases**
 
@@ -3192,11 +3192,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** release fuzz_smoke random_modules_do_not_panic passed. longer_random_modules stayed ignored.
 
 ### META-01 Favicon, manifest, Open Graph, and theme color
 
