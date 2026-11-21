@@ -59,7 +59,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-07 | Custom 404 page | P1 | PASSED | 1 | 1 | 1 | Unknown paths render the custom page with Home and Dashboard links and no overflow at 360. The document title was the site title; not-found now sets Not found — Boxwren. |
 | BIND-01 | Python bindings | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_py dylib executed a WAT add and returned 42 with schema_version 1 and status success. |
 | BIND-02 | Go bindings | P1 | PASSED | 0 | 0 | 0 | go test in bindings/go passed against the release C library. |
-| BIND-03 | C FFI library | P1 | NOT STARTED | | | | |
+| BIND-03 | C FFI library | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_ffi dylib and static library are present and were loaded by the passing Go tests. |
 | DEVOPS-01 | GitHub Actions CI | P1 | NOT STARTED | | | | |
 | DEVOPS-02 | Release workflow | P2 | NOT STARTED | | | | |
 | DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
@@ -2771,7 +2771,7 @@ None noticed while reading the code.
 - **ID:** BIND-03
 - **Name:** C FFI library
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2784,9 +2784,9 @@ boxwren-ffi exports a C ABI, including boxwren_engine_new, for the Go package. I
 
 **Acceptance criteria**
 
-- [ ] cargo build -p boxwren-ffi --release produces the library.
-- [ ] The Go tests link it.
-- [ ] The exported engine uses the same deny-by-default limits.
+- [x] cargo build -p boxwren-ffi --release produces the library.
+- [x] The Go tests link it.
+- [x] The exported engine uses the same deny-by-default limits.
 
 **Test cases**
 
@@ -2814,11 +2814,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** The release libboxwren_ffi dylib and static library are present and were loaded by the passing Go tests.
 
 ### DEVOPS-01 GitHub Actions CI
 
