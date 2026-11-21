@@ -12,7 +12,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | DATA-01 | Neon Postgres schema | P0 | PASSED | 0 | 0 | 0 | Live Neon: four tables, FKs, unique email and hash, runs index. Duplicate email 23505. SQL-like text stored as data. |
 | DATA-02 | SQLite schema auto-init | P0 | PASSED | 0 | 0 | 0 | Fresh sqlite created accounts, api_keys, runs. Restart kept the row. Bad paths fail. |
-| CORE-01 | Wasmtime engine execute | P0 | NOT STARTED | | | | |
+| CORE-01 | Wasmtime engine execute | P0 | PASSED | 0 | 0 | 0 | lib add_returns_four passed. CLI add returned 4, exit 0. Empty, whitespace, and non-module rejected without a crash. Missing export rejected. 100 repeats stayed success. Two parallel CLI runs both returned 4. |
 | CORE-02 | KillHandle cross-thread kill | P0 | NOT STARTED | | | | |
 | SANDBOX-01 | Filesystem deny-by-default and capability journal | P0 | NOT STARTED | | | | |
 | SANDBOX-02 | Directory preopen grants | P0 | NOT STARTED | | | | |
@@ -200,7 +200,7 @@ None.
 - **ID:** CORE-01
 - **Name:** Wasmtime engine execute
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -214,9 +214,9 @@ Engine::new builds one Wasmtime engine. Engine::execute runs one RunRequest in i
 
 **Acceptance criteria**
 
-- [ ] The 2+2 WAT module in lib.rs tests returns success and return_value 4.
-- [ ] A second execute on the same Engine still works.
-- [ ] An invalid module becomes a rejected report or an Error, and does not panic the host.
+- [x] The 2+2 WAT module in lib.rs tests returns success and return_value 4.
+- [x] A second execute on the same Engine still works.
+- [x] An invalid module becomes a rejected report or an Error, and does not panic the host.
 
 **Test cases**
 
@@ -244,11 +244,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** lib add_returns_four passed. CLI add returned 4, exit 0. Empty, whitespace, and non-module rejected without a crash. Missing export rejected. 100 repeats stayed success. Two parallel CLI runs both returned 4.
 
 ### CORE-02 KillHandle cross-thread kill
 
