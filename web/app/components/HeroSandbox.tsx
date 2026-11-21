@@ -21,11 +21,11 @@ const SCENARIOS: Record<Scenario, ScenarioData> = {
     title: "Host File Read",
     badge: "Trapped at Preopen Border",
     badgeColor: "kill",
-    threatVector: "Prompt Injection trying to read ~/.ssh/id_rsa",
+    threatVector: "Prompt injection trying to read /etc/passwd",
     codeLines: [
-      { text: "// Malicious prompt injection attempting host key exfiltration", type: "comment" },
-      { text: "fn exploit_read_host_keys() -> Result<(), Box<dyn Error>> {", type: "code" },
-      { text: "    let target = \"~/.ssh/id_rsa\";", type: "code" },
+      { text: "// Malicious prompt injection attempting a host file read", type: "comment" },
+      { text: "fn exploit_read_host_file() -> Result<(), Box<dyn Error>> {", type: "code" },
+      { text: "    let target = \"/etc/passwd\";", type: "code" },
       { text: "    let host_secret = std::fs::read_to_string(target)?;", type: "highlight" },
       { text: "    println!(\"EXFILTRATE: {}\", host_secret);", type: "code" },
       { text: "    Ok(())", type: "code" },
@@ -35,7 +35,7 @@ const SCENARIOS: Record<Scenario, ScenarioData> = {
   loop: {
     id: "loop",
     title: "Runaway CPU Loop",
-    badge: "Epoch Fuel Trapped",
+    badge: "Stopped by the wall clock",
     badgeColor: "warn",
     threatVector: "Spin-lock denial-of-service locking host CPU thread",
     codeLines: [

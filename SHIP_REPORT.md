@@ -51,7 +51,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | WEB-01 | DATABASE_URL required at Next boot | P0 | PASSED | 0 | 0 | 0 | next dev with an empty DATABASE_URL printed DATABASE_URL is not set and exited. The normal server on :3010 booted with the env file set. |
 | WEB-02 | Production build and CLI binary fetch | P1 | PASSED | 0 | 0 | 0 | npm run build fetched the v0.2.4 musl and darwin binaries, next build exited 0, and next start on :3020 served home 200, health 200, and a clean demo returning 4. Chrome on that production server ran the secret scenario and showed filesystem /etc/passwd denied. |
 | UI-01 | Marketing home page | P1 | PASSED | 0 | 0 | 0 | Chrome loaded the home page with the product title and no console errors. Overflow was 0 at 360 and 1440. Light color-scheme emulation kept the dark background and light heading text. |
-| UI-02 | Hero sandbox demo | P1 | NOT STARTED | | | | |
+| UI-02 | Hero sandbox demo | P1 | PASSED | 1 | 1 | 1 | The hero claimed a read of ~/.ssh/id_rsa and a fuel stop while the guest opens /etc/passwd and the loop stops on the wall clock. The copy now matches. Dev and production runs both showed filesystem /etc/passwd denied. |
 | UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | NOT STARTED | | | | |
 | UI-04 | Operator dashboard | P0 | NOT STARTED | | | | |
 | UI-05 | Navbar, footer, and SEO metadata | P1 | NOT STARTED | | | | |
@@ -2329,7 +2329,7 @@ None noticed while reading the code.
 - **ID:** UI-02
 - **Name:** Hero sandbox demo
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2342,9 +2342,9 @@ The hero lists four scenarios: secret, loop, network, and clean. Run posts {scen
 
 **Acceptance criteria**
 
-- [ ] Each scenario button runs and shows a report without a page reload.
-- [ ] A 429 or 503 shows an error, not a blank panel.
-- [ ] Kill is only meaningful for the loop. The control's actual wiring must match what the user can click.
+- [x] Each scenario button runs and shows a report without a page reload.
+- [x] A 429 or 503 shows an error, not a blank panel.
+- [x] Kill is only meaningful for the loop. The control's actual wiring must match what the user can click.
 
 **Test cases**
 
@@ -2373,11 +2373,11 @@ Scenario list, code block overflow, report panel, loading, error, disabled, hove
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 1
+- **Bugs Fixed:** 1
+- **UI Issues Fixed:** 1
+- **Files Changed:** web/app/components/HeroSandbox.tsx
+- **Notes:** The hero claimed a read of ~/.ssh/id_rsa and a fuel stop while the guest opens /etc/passwd and the loop stops on the wall clock. The copy now matches. Dev and production runs both showed filesystem /etc/passwd denied.
 
 ### UI-03 Install, benchmarks, capabilities, safety, and threat sections
 
