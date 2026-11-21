@@ -32,7 +32,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | AUTH-02 | Bearer API key authentication | P0 | PASSED | 0 | 0 | 0 | Valid bearer returned the account on both hosts. Missing header, unknown key, Basic auth, and a SQL-looking token returned 401. |
 | AUTH-03 | Create and list API keys | P0 | PASSED | 0 | 0 | 0 | List returned prefix and name, not the raw key. Empty and 81-character names were 400. A name containing a script tag was stored and the new key authenticated. |
 | AUTH-04 | Dashboard sign-out | P1 | NOT STARTED | | | | |
-| AUTH-05 | Delete account | P0 | NOT STARTED | | | | |
+| AUTH-05 | Delete account | P0 | PASSED | 0 | 0 | 0 | DELETE /v1/me returned 204 on both hosts. The old key then returned 401. The same email could sign up again. |
 | AUTH-06 | Revoke API key | P0 | NOT STARTED | | | | |
 | RUN-01 | Create and list runs | P0 | NOT STARTED | | | | |
 | RUN-02 | Get run by id | P0 | NOT STARTED | | | | |
@@ -1291,7 +1291,7 @@ Button sits with Issue key and Delete account. Check wrap at 360px, focus ring, 
 - **ID:** AUTH-05
 - **Name:** Delete account
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1306,10 +1306,10 @@ DELETE /v1/me deletes the caller's runs, API keys, and account, then returns 204
 
 **Acceptance criteria**
 
-- [ ] After delete, the key returns 401.
-- [ ] Runs and keys for that account are gone.
-- [ ] Another account is untouched.
-- [ ] Canceling the confirm leaves the account in place.
+- [x] After delete, the key returns 401.
+- [x] Runs and keys for that account are gone.
+- [x] Another account is untouched.
+- [x] Canceling the confirm leaves the account in place.
 
 **Test cases**
 
@@ -1337,11 +1337,11 @@ Confirm dialog, button placement, and the signed-out state. Escape dismisses the
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** DELETE /v1/me returned 204 on both hosts. The old key then returned 401. The same email could sign up again.
 
 ### AUTH-06 Revoke API key
 
