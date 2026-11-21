@@ -4,7 +4,7 @@ info:
   description: |
     Optional multi-tenant HTTP API around the Boxwren Wasmtime sandbox.
     Local-first embed remains the primary path; see docs/HOSTED.md.
-  version: 0.2.4
+  version: 0.2.5
 servers:
   - url: https://boxwren.rejisterjack.com
     description: Public Next.js API. Grants are ignored. wait=false is 400. Kill is 409.
