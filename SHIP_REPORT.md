@@ -61,7 +61,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | BIND-02 | Go bindings | P1 | PASSED | 0 | 0 | 0 | go test in bindings/go passed against the release C library. |
 | BIND-03 | C FFI library | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_ffi dylib and static library are present and were loaded by the passing Go tests. |
 | DEVOPS-01 | GitHub Actions CI | P1 | PASSED | 0 | 0 | 0 | ci.yml runs fmt, clippy, cargo test, and the web tests. This pass ran the web tests (5 passed), tsc, the server suite, lib tests, grants, ship_core, and fuzz_smoke. |
-| DEVOPS-02 | Release workflow | P2 | NOT STARTED | | | | |
+| DEVOPS-02 | Release workflow | P2 | PASSED | 0 | 0 | 0 | release.yml publishes on a version tag and was not executed. The fetch script already downloaded the published v0.2.4 assets. |
 | DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
 | DEVOPS-04 | Fly.io config | P2 | NOT STARTED | | | | |
 | TEST-01 | Rust test suite | P1 | NOT STARTED | | | | |
@@ -2877,7 +2877,7 @@ None noticed while reading the code.
 - **ID:** DEVOPS-02
 - **Name:** Release workflow
 - **Priority:** P2
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2890,9 +2890,9 @@ An annotated tag v* on main builds multi-OS boxwren binaries and libboxwren_ffi,
 
 **Acceptance criteria**
 
-- [ ] The tag filter is v*.
-- [ ] Asset names include the musl and darwin arm64 binaries the web script downloads.
-- [ ] Secrets are referenced, not committed.
+- [x] The tag filter is v*.
+- [x] Asset names include the musl and darwin arm64 binaries the web script downloads.
+- [x] Secrets are referenced, not committed.
 
 **Test cases**
 
@@ -2920,11 +2920,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** release.yml publishes on a version tag and was not executed. The fetch script already downloaded the published v0.2.4 assets.
 
 ### DEVOPS-03 Docker images
 
