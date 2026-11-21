@@ -50,7 +50,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | API-03 | Public POST /v1/demo | P1 | PASSED | 0 | 0 | 0 | secret, loop, network, and clean returned reports. loop run was timed_out. loop kill was killed. clean return_value was 4. An unknown scenario was 400. |
 | WEB-01 | DATABASE_URL required at Next boot | P0 | PASSED | 0 | 0 | 0 | next dev with an empty DATABASE_URL printed DATABASE_URL is not set and exited. The normal server on :3010 booted with the env file set. |
 | WEB-02 | Production build and CLI binary fetch | P1 | PASSED | 0 | 0 | 0 | npm run build fetched the v0.2.4 musl and darwin binaries, next build exited 0, and next start on :3020 served home 200, health 200, and a clean demo returning 4. Chrome on that production server ran the secret scenario and showed filesystem /etc/passwd denied. |
-| UI-01 | Marketing home page | P1 | NOT STARTED | | | | |
+| UI-01 | Marketing home page | P1 | PASSED | 0 | 0 | 0 | Chrome loaded the home page with the product title and no console errors. Overflow was 0 at 360 and 1440. Light color-scheme emulation kept the dark background and light heading text. |
 | UI-02 | Hero sandbox demo | P1 | NOT STARTED | | | | |
 | UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | NOT STARTED | | | | |
 | UI-04 | Operator dashboard | P0 | NOT STARTED | | | | |
@@ -2274,7 +2274,7 @@ Load the production server and confirm the home page renders.
 - **ID:** UI-01
 - **Name:** Marketing home page
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2288,9 +2288,9 @@ The home page is a dark marketing page: hero, telemetry strip (1.05 µs, 6.10 ms
 
 **Acceptance criteria**
 
-- [ ] GET / returns 200 and the hero heading.
-- [ ] In-page anchors scroll to sandbox, benchmarks, capabilities, architecture, threat-model, and install.
-- [ ] The dashboard link goes to /dashboard.
+- [x] GET / returns 200 and the hero heading.
+- [x] In-page anchors scroll to sandbox, benchmarks, capabilities, architecture, threat-model, and install.
+- [x] The dashboard link goes to /dashboard.
 
 **Test cases**
 
@@ -2318,11 +2318,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Chrome loaded the home page with the product title and no console errors. Overflow was 0 at 360 and 1440. Light color-scheme emulation kept the dark background and light heading text.
 
 ### UI-02 Hero sandbox demo
 
