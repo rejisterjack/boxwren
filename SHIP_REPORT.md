@@ -46,7 +46,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | SEC-01 | boxwren-server security headers | P1 | PASSED | 0 | 0 | 0 | Health, 401, and 400 responses included nosniff, DENY, and no-referrer. |
 | SEC-02 | Hosted Next.js security headers | P1 | PASSED | 0 | 0 | 0 | Document and health responses included nosniff, DENY, no-referrer, and a closed Permissions-Policy. X-Powered-By was absent. |
 | SEC-03 | Hosted run clamps and guest argv isolation | P0 | PASSED | 0 | 0 | 0 | fuel 1e18 was clamped to 1e9 and the loop exhausted fuel in 290ms instead of the requested 60s wall. Entry -evil was 400. A string args value was 400. Args that look like grants stayed behind -- and the add module still returned 4. |
-| API-02 | KEYWARDEN_URL run preflight | P1 | NOT STARTED | | | | |
+| API-02 | KEYWARDEN_URL run preflight | P1 | PASSED | 0 | 0 | 0 | With the stub on :8899, entry run was allowed and entry deny-me returned 403 on both the server and Next. The guest did not start on deny. |
 | API-03 | Public POST /v1/demo | P1 | NOT STARTED | | | | |
 | WEB-01 | DATABASE_URL required at Next boot | P0 | NOT STARTED | | | | |
 | WEB-02 | Production build and CLI binary fetch | P1 | NOT STARTED | | | | |
@@ -2051,7 +2051,7 @@ None noticed while reading the code.
 - **ID:** API-02
 - **Name:** KEYWARDEN_URL run preflight
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2065,10 +2065,10 @@ When KEYWARDEN_URL is set, both hosts POST {action:'boxwren.run', account_id, en
 
 **Acceptance criteria**
 
-- [ ] Unset URL runs the guest.
-- [ ] HTTP 200 from Keywarden allows the run.
-- [ ] HTTP 403 from Keywarden blocks the guest and returns 403.
-- [ ] A connection failure blocks the run rather than failing open.
+- [x] Unset URL runs the guest.
+- [x] HTTP 200 from Keywarden allows the run.
+- [x] HTTP 403 from Keywarden blocks the guest and returns 403.
+- [x] A connection failure blocks the run rather than failing open.
 
 **Test cases**
 
@@ -2096,11 +2096,11 @@ Dashboard shows the 403 text in the error panel.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** With the stub on :8899, entry run was allowed and entry deny-me returned 403 on both the server and Next. The guest did not start on deny.
 
 ### API-03 Public POST /v1/demo
 
