@@ -28,7 +28,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | CLI-03 | export-undoom | P1 | PASSED | 0 | 0 | 0 | A success report wrapped to agent boxwren, name boxwren-run, with the original report under metadata.report_json. Empty input exited 2. |
 | CLI-04 | run-py and run-js | P1 | PASSED | 0 | 0 | 0 | Release binary has both commands. run-py printed hello-from-py. run-js printed js-ok. Ungranted /etc/passwd did not leak. Empty Python file succeeded with empty stdout. |
 | API-01 | Health check | P0 | PASSED | 0 | 0 | 0 | GET /healthz returned 200 ok on boxwren-server :8799 and Next :3010. POST returned 405 on both. Eight parallel GETs on the server all returned 200. No auth required. |
-| AUTH-01 | Email signup and initial API key | P0 | NOT STARTED | | | | |
+| AUTH-01 | Email signup and initial API key | P0 | PASSED | 0 | 0 | 0 | Both hosts returned a bw_ key. Duplicate email was 409. Empty and at-less email were 400. Invalid JSON was 400. A non-English email was accepted. A value with whitespace was rejected. |
 | AUTH-02 | Bearer API key authentication | P0 | NOT STARTED | | | | |
 | AUTH-03 | Create and list API keys | P0 | NOT STARTED | | | | |
 | AUTH-04 | Dashboard sign-out | P1 | NOT STARTED | | | | |
@@ -1069,7 +1069,7 @@ None noticed while reading the code.
 - **ID:** AUTH-01
 - **Name:** Email signup and initial API key
 - **Priority:** P0
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -1084,10 +1084,10 @@ POST /v1/accounts with {email} creates an account and a key named default. The r
 
 **Acceptance criteria**
 
-- [ ] A new email returns 200 with an api_key that authenticates.
-- [ ] The same email again returns 409 and does not rotate the key.
-- [ ] Invalid email and invalid JSON return 400.
-- [ ] The database stores the hash, not the raw key.
+- [x] A new email returns 200 with an api_key that authenticates.
+- [x] The same email again returns 409 and does not rotate the key.
+- [x] Invalid email and invalid JSON return 400.
+- [x] The database stores the hash, not the raw key.
 
 **Test cases**
 
@@ -1116,11 +1116,11 @@ API. Dashboard form is UI-04.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** Both hosts returned a bw_ key. Duplicate email was 409. Empty and at-less email were 400. Invalid JSON was 400. A non-English email was accepted. A value with whitespace was rejected.
 
 ### AUTH-02 Bearer API key authentication
 
