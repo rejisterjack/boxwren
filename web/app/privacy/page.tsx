@@ -21,7 +21,8 @@ export default function PrivacyPage() {
       </p>
       <p style={{ margin: "1rem 0" }}>
         There is no password, session cookie, or mailing list. Sign out removes the key from this
-        browser. It does not delete the account row.
+        browser and leaves the account in place. Delete account removes the account, its API keys,
+        and its run reports.
       </p>
     </article>
   );

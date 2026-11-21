@@ -55,7 +55,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-03 | Install, benchmarks, capabilities, safety, and threat sections | P2 | PASSED | 0 | 0 | 0 | All five home sections rendered. The Rust install tab showed cargo add boxwren. Overflow stayed 0. |
 | UI-04 | Operator dashboard | P0 | PASSED | 0 | 0 | 0 | Chrome signup created a key, the default WAT returned 4 and appeared in history, the only key could not be revoked, sign-out cleared storage, and pasting the key restored the account. At 360px overflow was 0. No console errors. |
 | UI-05 | Navbar, footer, and SEO metadata | P1 | PASSED | 0 | 0 | 0 | Desktop nav and footer links rendered. At 360px the menu opened and Escape closed it. The document title, og:title, and theme-color were present. |
-| UI-06 | Privacy and Terms pages | P2 | NOT STARTED | | | | |
+| UI-06 | Privacy and Terms pages | P2 | PASSED | 1 | 1 | 1 | Privacy said sign-out never deletes the account. It now says sign-out leaves the account and Delete account removes the account, keys, and reports. Terms rendered with title Terms — Boxwren and no overflow at 360. |
 | UI-07 | Custom 404 page | P1 | NOT STARTED | | | | |
 | BIND-01 | Python bindings | P1 | NOT STARTED | | | | |
 | BIND-02 | Go bindings | P1 | NOT STARTED | | | | |
@@ -2554,7 +2554,7 @@ None.
 - **ID:** UI-06
 - **Name:** Privacy and Terms pages
 - **Priority:** P2
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2567,9 +2567,9 @@ Privacy says the local tools do not create an account, and the hosted site store
 
 **Acceptance criteria**
 
-- [ ] GET /privacy and GET /terms return 200.
-- [ ] Titles are Privacy — Boxwren and Terms — Boxwren.
-- [ ] The pages use the same header and footer as the rest of the site.
+- [x] GET /privacy and GET /terms return 200.
+- [x] Titles are Privacy — Boxwren and Terms — Boxwren.
+- [x] The pages use the same header and footer as the rest of the site.
 
 **Test cases**
 
@@ -2597,11 +2597,11 @@ Line length, padding at 360 and 1440, heading size, dark theme, focus on footer 
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 1
+- **Bugs Fixed:** 1
+- **UI Issues Fixed:** 1
+- **Files Changed:** web/app/privacy/page.tsx
+- **Notes:** Privacy said sign-out never deletes the account. It now says sign-out leaves the account and Delete account removes the account, keys, and reports. Terms rendered with title Terms — Boxwren and no overflow at 360.
 
 ### UI-07 Custom 404 page
 
