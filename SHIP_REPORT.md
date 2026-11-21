@@ -3438,3 +3438,50 @@ No UI. The spec is a file.
 - KEYWARDEN_URL has no timeout on either host. A stalled policy service stalls run creation.
 - fetch-boxwren.mjs downloads a release binary during the production build. A missing GitHub release asset fails the build. linux arm64 is not a distinct download.
 - metadataBase defaults to https://boxwren.dev while the hosted docs name https://boxwren.rejisterjack.com. Social cards and the live site can disagree until NEXT_PUBLIC_APP_URL is set.
+
+## Whole-Product Check
+
+- Auth was required on account, key, and run routes. Missing and unknown bearers returned 401. Cross-account run reads and kills returned 404.
+- No secrets were printed from `.env.local`. The error page hides the thrown message. The production response on `:3020` sent `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and a closed Permissions-Policy.
+- Hosted `/v1` is limited to 60 requests a minute in Neon. The public demo is limited to 30 a minute in the current process. `/healthz` is not limited.
+- `npm audit` reports one moderate finding in Next.js 15.5.28. The patched release is 15.5.29, which is outside the pinned range. The site was not upgraded in this pass.
+- `npm run build` fetched the v0.2.4 CLI binaries and exited 0. `next start` on port 3020 served the home page, `/healthz`, and a clean demo that returned 4. Chrome on that server ran the secret scenario and showed `filesystem /etc/passwd denied`.
+- A production reload trace measured LCP at 186 ms and CLS at 0.00. A Lighthouse snapshot scored 100 for accessibility, best practices, SEO, and agentic browsing, with no failed audits.
+- The custom 404 title is `Not found — Boxwren`. The 500 page title is `Error — Boxwren` and does not show the exception text. Favicon, icons, and the manifest returned 200.
+- README setup was not repeated from an empty clone. The production build, both Docker images, and the local servers were started from this working tree.
+
+## Final Summary
+
+The feature table above is the final status. All 61 rows are PASSED.
+
+## Totals
+
+- Features: 61. Passed: 61. Blocked: 0.
+- Priority: 30 P0, 25 P1, 6 P2.
+- Bugs found: 6. Bugs fixed: 6. UI issues fixed: 3.
+- Gaps: 3 built (schema instructions, 500 page, OpenAPI) and 5 still deferred.
+
+## Still Blocked
+
+None.
+
+## Known Limitations
+
+- The public site stays dark when the browser asks for a light scheme. A light theme is deferred.
+- There is no password, OAuth, outbound email, billing, or dashboard kill button. Hosted kill stays 409. Live kill is the local server.
+- Demo and server rate limits are per process. The Neon limiter is shared.
+- `KEYWARDEN_URL` has no request timeout.
+- `fetch-boxwren.mjs` does not download a separate linux arm64 binary.
+- Next.js 15.5.28 has a moderate audit finding fixed in 15.5.29.
+- The long fuzz case stays ignored. API keys do not expire. `a@b` is a valid email under the current rule.
+
+## Launch Checklist
+
+- Set `DATABASE_URL` and run `psql "$DATABASE_URL" -f web/db/schema.sql` once. Set `NEXT_PUBLIC_APP_URL` to the public origin.
+- Put TLS in front of the site. The Fly config already forces HTTPS for the API image and checks `/healthz` on port 8787. Mount a volume at `/data`.
+- Back up the Neon database. Watch `/healthz` on both the site and `boxwren-server`.
+- Roll back by redeploying the previous image or the previous Vercel deployment. The guest CLI version is pinned to the v0.2.4 release asset.
+
+## Decision
+
+GO. Every feature in the table passed on a live run, and the six bugs found in this pass are fixed. The deferred items and the Next.js audit finding do not block the local-first runtime or the hosted API.
