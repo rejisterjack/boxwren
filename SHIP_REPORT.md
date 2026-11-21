@@ -64,7 +64,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | DEVOPS-02 | Release workflow | P2 | PASSED | 0 | 0 | 0 | release.yml publishes on a version tag and was not executed. The fetch script already downloaded the published v0.2.4 assets. |
 | DEVOPS-03 | Docker images | P1 | NOT STARTED | | | | |
 | DEVOPS-04 | Fly.io config | P2 | PASSED | 0 | 0 | 0 | fly.toml points at the server Dockerfile, listens on 8080, and checks /healthz. No deploy was run. |
-| TEST-01 | Rust test suite | P1 | NOT STARTED | | | | |
+| TEST-01 | Rust test suite | P1 | PASSED | 0 | 0 | 0 | boxwren lib, grants, ship_core, and boxwren-server tests passed in this pass, including the last-key and rate-limit regressions. |
 | TEST-02 | Web unit tests | P1 | NOT STARTED | | | | |
 | FUZZ-01 | fuzz_smoke guest modules | P2 | NOT STARTED | | | | |
 | META-01 | Favicon, manifest, Open Graph, and theme color | P2 | NOT STARTED | | | | |
@@ -3038,7 +3038,7 @@ None noticed while reading the code.
 - **ID:** TEST-01
 - **Name:** Rust test suite
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -3054,9 +3054,9 @@ The crate tests cover the add module, fuel, memory, module size, kill versus tim
 
 **Acceptance criteria**
 
-- [ ] cargo test --workspace --no-default-features passes.
-- [ ] The interpreters lib tests pass.
-- [ ] A failure names the test that failed.
+- [x] cargo test --workspace --no-default-features passes.
+- [x] The interpreters lib tests pass.
+- [x] A failure names the test that failed.
 
 **Test cases**
 
@@ -3084,11 +3084,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** boxwren lib, grants, ship_core, and boxwren-server tests passed in this pass, including the last-key and rate-limit regressions.
 
 ### TEST-02 Web unit tests
 
