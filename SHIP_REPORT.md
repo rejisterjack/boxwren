@@ -3480,7 +3480,7 @@ None.
 - Set `DATABASE_URL` and run `psql "$DATABASE_URL" -f web/db/schema.sql` once. Set `NEXT_PUBLIC_APP_URL` to the public origin.
 - Put TLS in front of the site. The Fly config already forces HTTPS for the API image and checks `/healthz` on port 8787. Mount a volume at `/data`.
 - Back up the Neon database. Watch `/healthz` on both the site and `boxwren-server`.
-- Roll back by redeploying the previous image or the previous Vercel deployment. The guest CLI version is pinned to the v0.2.4 release asset.
+- Roll back by redeploying the previous image or the previous Vercel deployment. The guest CLI version is pinned to the v0.2.5 release asset.
 
 ## Decision
 
