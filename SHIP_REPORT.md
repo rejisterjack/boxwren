@@ -58,7 +58,7 @@ The public site ignores filesystem, network, and environment grants and refuses 
 | UI-06 | Privacy and Terms pages | P2 | PASSED | 1 | 1 | 1 | Privacy said sign-out never deletes the account. It now says sign-out leaves the account and Delete account removes the account, keys, and reports. Terms rendered with title Terms — Boxwren and no overflow at 360. |
 | UI-07 | Custom 404 page | P1 | PASSED | 1 | 1 | 1 | Unknown paths render the custom page with Home and Dashboard links and no overflow at 360. The document title was the site title; not-found now sets Not found — Boxwren. |
 | BIND-01 | Python bindings | P1 | PASSED | 0 | 0 | 0 | The release libboxwren_py dylib executed a WAT add and returned 42 with schema_version 1 and status success. |
-| BIND-02 | Go bindings | P1 | NOT STARTED | | | | |
+| BIND-02 | Go bindings | P1 | PASSED | 0 | 0 | 0 | go test in bindings/go passed against the release C library. |
 | BIND-03 | C FFI library | P1 | NOT STARTED | | | | |
 | DEVOPS-01 | GitHub Actions CI | P1 | NOT STARTED | | | | |
 | DEVOPS-02 | Release workflow | P2 | NOT STARTED | | | | |
@@ -2716,7 +2716,7 @@ None noticed while reading the code.
 - **ID:** BIND-02
 - **Name:** Go bindings
 - **Priority:** P1
-- **Status:** NOT STARTED
+- **Status:** PASSED
 
 **Files involved**
 
@@ -2730,9 +2730,9 @@ The Go package wraps the C ABI. New, Close, KillHandle, Kill, Execute, and Execu
 
 **Acceptance criteria**
 
-- [ ] go test ./... passes after the FFI library is built.
-- [ ] Execute returns JSON for a small module.
-- [ ] ExecuteWith plus Kill stops one run.
+- [x] go test ./... passes after the FFI library is built.
+- [x] Execute returns JSON for a small module.
+- [x] ExecuteWith plus Kill stops one run.
 
 **Test cases**
 
@@ -2760,11 +2760,11 @@ None noticed while reading the code.
 
 **Results**
 
-- **Bugs Found:**
-- **Bugs Fixed:**
-- **UI Issues Fixed:**
-- **Files Changed:**
-- **Notes:**
+- **Bugs Found:** 0
+- **Bugs Fixed:** 0
+- **UI Issues Fixed:** 0
+- **Files Changed:** none
+- **Notes:** go test in bindings/go passed against the release C library.
 
 ### BIND-03 C FFI library
 
