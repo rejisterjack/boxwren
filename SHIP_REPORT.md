@@ -2833,7 +2833,7 @@ None noticed while reading the code.
 
 **Expected behavior**
 
-CI runs on push to main and on pull requests. The Rust job uses stable with rustfmt and clippy, targets wasm32-wasip1 and wasm32-wasip2, checks format, denies clippy warnings, tests the workspace with --no-default-features, tests interpreters, and runs fuzz_smoke in release. A second job runs cargo deny and cargo audit. The web job uses Node 22, npm ci, tsc --noEmit, and npm test. The Go job builds the FFI library and runs go test.
+CI runs only on a push to main. The Rust job uses stable with rustfmt and clippy, targets wasm32-wasip1 and wasm32-wasip2, checks format, denies clippy warnings, tests the workspace with --no-default-features, tests interpreters, and runs fuzz_smoke in release. A second job runs cargo deny and cargo audit. The web job uses Node 22, npm ci, tsc --noEmit, and npm test. The Go job builds the FFI library and runs go test.
 
 **Acceptance criteria**
 
@@ -2886,7 +2886,7 @@ None noticed while reading the code.
 
 **Expected behavior**
 
-An annotated tag v* on main builds multi-OS boxwren binaries and libboxwren_ffi, creates a GitHub Release, publishes the boxwren crate with CARGO_REGISTRY_TOKEN, and builds boxwren-py wheels with PYPI_API_TOKEN. The release workflow also runs boxwren demo and uploads demo.json. The web fetch script expects the v0.2.4 asset names.
+A push to main whose subject starts with `release: v` builds multi-OS boxwren binaries and libboxwren_ffi, creates a GitHub Release, publishes the boxwren crate with CARGO_REGISTRY_TOKEN, and builds boxwren-py wheels with PYPI_API_TOKEN. The release workflow also runs boxwren demo and uploads demo.json. The web fetch script expects the v0.2.4 asset names.
 
 **Acceptance criteria**
 

@@ -117,15 +117,17 @@ cargo run -p boxwren-server -- --listen 127.0.0.1:8787 --db /tmp/boxwren.sqlite
 
 Leave `NEXT_PUBLIC_BOXWREN_API_URL` empty on the public site. Set it when a dashboard should call that local server. Details: [docs/HOSTED.md](docs/HOSTED.md). OpenAPI: [docs/openapi.yaml](docs/openapi.yaml).
 
-## Releasing
+## CI/CD
 
-Push an annotated tag `v*` on `main`. GitHub Actions then:
+Workflows run only on a push to `main`. A pull request, any other branch, a tag push, a schedule, and a manual run do not start CI or CD. The only deploy target is production. Vercel builds the site only when the git ref is `main`.
+
+A production publish runs on that same push when the commit subject starts with `release: v` and a version (`release: v1.2.3`). Any other push to `main` runs checks only. That publish:
 
 1. Builds multi-OS `boxwren` CLI binaries and `libboxwren_ffi` artifacts and creates a GitHub Release
 2. Runs `cargo publish -p boxwren` with the repository secret `CARGO_REGISTRY_TOKEN`
 3. Builds and publishes `boxwren-py` wheels with the repository secret `PYPI_API_TOKEN` and the `pypi` environment
 
-Both secrets are already set.
+Pushing a `v*` tag by itself does not start a workflow. Both secrets are already set.
 
 ## License
 
